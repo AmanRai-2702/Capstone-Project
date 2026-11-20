@@ -1,7 +1,9 @@
+import fnmatch
 import logging
 import os
 from collections import Counter
 from pathlib import Path
+from typing import Iterable
 
 from repomind.models import FileCategory, FileRecord
 
@@ -52,28 +54,62 @@ def _count_lines(path: Path) -> int | None:
         return None
 
 
+def load_ignore_file(root: Path) -> list[str]:
+    """Patterns from `<root>/.repomindignore`: one per line, `#` comments, directory names or globs."""
+    f = root / ".repomindignore"
+    if not f.is_file():
+        return []
+    try:
+        lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return []
+    return [ln.strip().rstrip("/") for ln in lines if ln.strip() and not ln.strip().startswith("#")]
+
+
+def _matches(patterns: list[str], rel_path: str, name: str) -> bool:
+    """A pattern matches a directory/file by its name, or by its path relative to the root."""
+    return any(fnmatch.fnmatch(name, p) or fnmatch.fnmatch(rel_path, p) or rel_path.startswith(p + "/")
+               for p in patterns)
+
+
 def discover_files(
-    root: Path, max_file_bytes: int = DEFAULT_MAX_FILE_BYTES
+    root: Path,
+    max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
+    extra_ignored: Iterable[str] = (),
+    max_files: int | None = None,
 ) -> tuple[list[FileRecord], dict[str, int]]:
-    """Walk `root` and return (kept files, {skip_reason: count})."""
+    """Walk `root` and return (kept files, {skip_reason: count}).
+
+    Exclusions, all configurable: the built-in IGNORED_DIRS, `extra_ignored` (settings / CLI),
+    and a `.repomindignore` file in the repository itself. `max_files` is a resource limit.
+    """
     records: list[FileRecord] = []
     skipped: Counter[str] = Counter()
+    patterns = [*extra_ignored, *load_ignore_file(root)]
 
     # os.walk does not follow symlinked directories by default; we keep it that way
     # so a malicious repo cannot make us read files outside its own folder.
     for current, dirnames, filenames in os.walk(root):
+        rel_dir = Path(current).relative_to(root).as_posix()
         kept_dirs = []
         for d in dirnames:
+            rel = d if rel_dir == "." else f"{rel_dir}/{d}"
             if d in IGNORED_DIRS or d.endswith(".egg-info"):
                 skipped["ignored_directory"] += 1
+            elif _matches(patterns, rel, d):
+                skipped["excluded_by_rule"] += 1
             else:
                 kept_dirs.append(d)
         dirnames[:] = sorted(kept_dirs)  # sorted => same order on every run
 
         for filename in sorted(filenames):
             full = Path(current) / filename
+            rel = full.relative_to(root).as_posix()
             if full.is_symlink():
                 skipped["symlink"] += 1
+                continue
+            if _matches(patterns, rel, filename):
+                skipped["excluded_by_rule"] += 1
                 continue
             try:
                 size = full.stat().st_size
@@ -84,8 +120,10 @@ def discover_files(
             if reason:
                 skipped[reason] += 1
                 continue
+            if max_files is not None and len(records) >= max_files:
+                skipped["file_limit_reached"] += 1
+                continue
 
-            rel = full.relative_to(root).as_posix()
             language, category = classify_file(rel)
             line_count = _count_lines(full) if category != FileCategory.OTHER else None
             records.append(FileRecord(

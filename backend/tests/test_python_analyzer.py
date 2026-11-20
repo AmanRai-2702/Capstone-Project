@@ -122,3 +122,108 @@ def test_syntax_error_handled_gracefully(analyzer: PythonAnalyzer):
     result = analyzer.analyze_file("bad.py", bad_code)
     assert result.entities == []
     assert result.relationships == []
+
+
+def test_decorators_are_not_attributed_as_calls():
+    code = (
+        "from fastapi import FastAPI\n"
+        "app = FastAPI()\n"
+        "@app.get('/x')\n"
+        "def x():\n    return 1\n"
+    )
+    result = PythonAnalyzer().analyze_file("app.py", code)
+    assert [r for r in result.relationships if r.type.value == "CALLS"] == []
+
+
+SAMPLE = """
+from models.base import Base
+from .util import helper
+
+class Child(Base):
+    def run(self):
+        self.step()
+        helper()
+        local_fn()
+
+    def step(self):
+        pass
+
+
+def local_fn():
+    return Child()
+"""
+
+
+def _rels(result, rtype):
+    return {(r.source_id, r.target_id) for r in result.relationships if r.type.value == rtype}
+
+
+def test_inheritance_is_detected():
+    result = PythonAnalyzer().analyze_file("pkg/mod.py", SAMPLE)
+    assert ("python:pkg/mod.py:Child", "python:models/base.py:Base") in _rels(result, "INHERITS")
+
+
+def test_self_calls_and_same_module_calls_are_detected():
+    calls = _rels(PythonAnalyzer().analyze_file("pkg/mod.py", SAMPLE), "CALLS")
+    assert ("python:pkg/mod.py:Child.run", "python:pkg/mod.py:Child.step") in calls     # self.step()
+    assert ("python:pkg/mod.py:Child.run", "python:pkg/mod.py:local_fn") in calls       # defined later in file
+    assert ("python:pkg/mod.py:local_fn", "python:pkg/mod.py:Child") in calls           # Child()
+
+
+def test_relative_import_resolves_against_package():
+    calls = _rels(PythonAnalyzer().analyze_file("pkg/mod.py", SAMPLE), "CALLS")
+    assert ("python:pkg/mod.py:Child.run", "python:pkg/util.py:helper") in calls
+
+
+def test_typed_parameter_is_a_uses_relationship():
+    code = "class Req:\n    pass\n\ndef handler(r: Req, n: int):\n    pass\n"
+    uses = _rels(PythonAnalyzer().analyze_file("a.py", code), "USES")
+    assert uses == {("python:a.py:handler", "python:a.py:Req")}
+
+
+TYPED = """
+from graph import Graph
+from typing import Optional
+
+class Local:
+    def ping(self):
+        pass
+
+class Service:
+    def __init__(self, graph: Graph, other: "Local", maybe: Optional[Graph] = None):
+        self.graph = graph
+        self.other = other
+
+    def run(self):
+        self.graph.build()
+        self.other.ping()
+
+    def unrelated(self, graph):
+        graph.build()          # untyped here: the annotation of __init__ must not leak into this scope
+
+
+def free(g: Graph | None):
+    g.build()
+
+
+def later(g):
+    g.build()                  # `g` was annotated in `free`, not here
+"""
+
+
+def test_annotated_parameters_drive_call_resolution():
+    calls = _rels(PythonAnalyzer().analyze_file("svc.py", TYPED), "CALLS")
+    assert ("python:svc.py:Service.run", "python:graph.py:Graph.build") in calls          # self.graph = graph
+    assert ("python:svc.py:Service.run", "python:svc.py:Local.ping") in calls            # string annotation, same file
+    assert ("python:svc.py:free", "python:graph.py:Graph.build") in calls                # Graph | None
+
+
+def test_type_information_does_not_leak_between_functions():
+    calls = _rels(PythonAnalyzer().analyze_file("svc.py", TYPED), "CALLS")
+    assert ("python:svc.py:Service.unrelated", "python:graph.py:Graph.build") not in calls
+    assert ("python:svc.py:later", "python:graph.py:Graph.build") not in calls
+
+
+def test_annotated_assignment_sets_type():
+    code = "from graph import Graph\n\ndef f():\n    g: Graph = make()\n    g.build()\n"
+    assert ("python:a.py:f", "python:graph.py:Graph.build") in _rels(PythonAnalyzer().analyze_file("a.py", code), "CALLS")

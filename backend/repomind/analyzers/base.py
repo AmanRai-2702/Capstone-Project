@@ -9,6 +9,11 @@ class AnalysisResult(BaseModel):
 
     entities: list[Entity] = Field(default_factory=list)
     relationships: list[Relationship] = Field(default_factory=list)
+    # html element id -> classes that JS adds/toggles at runtime (used by the CSS analyzer)
+    dynamic_classes: dict[str, set[str]] = Field(default_factory=dict)
+    errors: list[str] = Field(default_factory=list)   # non-fatal problems (syntax errors, ...)
+    # <script> blocks without src: (line offset in the HTML file, javascript text)
+    inline_scripts: list[tuple[int, str]] = Field(default_factory=list)
 
     def add_entity(self, entity: Entity) -> None:
         self.entities.append(entity)

@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, computed_field
 from .entity import Entity
 from .enums import EntityType, RelationKind, RelationType
 from .relationship import Relationship
+from .resolution import UnresolvedReference
 
 
 class RepositoryAnalysis(BaseModel):
@@ -16,6 +17,7 @@ class RepositoryAnalysis(BaseModel):
     entities: list[Entity] = Field(default_factory=list)
     relationships: list[Relationship] = Field(default_factory=list)
     stats: dict[str, Any] = Field(default_factory=dict)
+    unresolved: list[UnresolvedReference] = Field(default_factory=list)
 
     @computed_field
     @property
@@ -49,6 +51,14 @@ class RepositoryAnalysis(BaseModel):
         counts: dict[str, int] = {}
         for r in self.relationships:
             counts[r.kind.value] = counts.get(r.kind.value, 0) + 1
+        return counts
+
+    @computed_field
+    @property
+    def unresolved_counts_by_reason(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for u in self.unresolved:
+            counts[u.reason] = counts.get(u.reason, 0) + 1
         return counts
 
     def get_entity(self, entity_id: str) -> Entity | None:

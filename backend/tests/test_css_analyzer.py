@@ -12,6 +12,10 @@ STYLE_CSS_PATH = LOGIN_APP / "static" / "style.css"
 INDEX_HTML_PATH = LOGIN_APP / "static" / "index.html"
 
 
+# What the JS analyzer reports for login.js: messageEl.classList.toggle("error", ...)
+DYNAMIC = {"message": {"error"}}
+
+
 @pytest.fixture
 def analyzer() -> CSSAnalyzer:
     return CSSAnalyzer()
@@ -46,7 +50,9 @@ def test_analyze_css_entities(analyzer: CSSAnalyzer):
 
 def test_analyze_css_styles_relationships(analyzer: CSSAnalyzer, html_elements: list):
     code = STYLE_CSS_PATH.read_text(encoding="utf-8")
-    result = analyzer.analyze_file("static/style.css", code, html_elements=html_elements)
+    result = analyzer.analyze_file(
+        "static/style.css", code, html_elements=html_elements, dynamic_classes=DYNAMIC
+    )
 
     styles = [
         (r.source_id, r.target_id, r.kind)
@@ -79,7 +85,9 @@ def test_css_ground_truth_matches(analyzer: CSSAnalyzer, html_elements: list):
     """Verify all CSS entities and STYLES relationships in ground_truth.json match."""
     gt = json.loads((LOGIN_APP / "ground_truth.json").read_text(encoding="utf-8"))
     code = STYLE_CSS_PATH.read_text(encoding="utf-8")
-    result = analyzer.analyze_file("static/style.css", code, html_elements=html_elements)
+    result = analyzer.analyze_file(
+        "static/style.css", code, html_elements=html_elements, dynamic_classes=DYNAMIC
+    )
 
     # 1. Expected CSS entities
     expected_entities = {
@@ -104,3 +112,17 @@ def test_css_ground_truth_matches(analyzer: CSSAnalyzer, html_elements: list):
 
     missing_rels = expected_rels - extracted_rels
     assert not missing_rels, f"Missing CSS relationships: {missing_rels}"
+
+
+def test_compound_selector_not_inferred_without_js_evidence(analyzer: CSSAnalyzer, html_elements: list):
+    """.btn.primary must NOT style #profile-btn: nothing adds 'primary' to it."""
+    code = STYLE_CSS_PATH.read_text(encoding="utf-8")
+    result = analyzer.analyze_file(
+        "static/style.css", code, html_elements=html_elements, dynamic_classes=DYNAMIC
+    )
+    pairs = {(r.source_id, r.target_id) for r in result.relationships if r.type == RelationType.STYLES}
+    assert ("css:static/style.css:.btn.primary", "html:static/index.html:#profile-btn") not in pairs
+    # and without any JS evidence, .message.error is not guessed either
+    bare = analyzer.analyze_file("static/style.css", code, html_elements=html_elements)
+    bare_pairs = {(r.source_id, r.target_id) for r in bare.relationships if r.type == RelationType.STYLES}
+    assert ("css:static/style.css:.message.error", "html:static/index.html:#message") not in bare_pairs

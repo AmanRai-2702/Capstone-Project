@@ -139,3 +139,17 @@ def test_javascript_ground_truth_matches(analyzer: JavaScriptAnalyzer):
 
     missing_rels = expected_js_rels - extracted_rels
     assert not missing_rels, f"Missing JS relationships: {missing_rels}"
+
+
+def test_chained_add_event_listener_is_not_a_dom_reference(analyzer: JavaScriptAnalyzer):
+    code = 'document.getElementById("profile-btn").addEventListener("click", () => {});'
+    result = analyzer.analyze_file("static/app.js", code)
+    targets = {r.target_id for r in result.relationships}
+    assert not any(t.endswith("#click") for t in targets)
+    assert "html:static/index.html:#profile-btn" in targets
+
+
+def test_class_toggle_is_recorded_as_dynamic_class(analyzer: JavaScriptAnalyzer):
+    code = LOGIN_JS_PATH.read_text(encoding="utf-8")
+    result = analyzer.analyze_file("static/login.js", code)
+    assert result.dynamic_classes == {"message": {"error"}}

@@ -1,4 +1,5 @@
 import logging
+import posixpath
 import re
 from pathlib import PurePosixPath
 
@@ -51,9 +52,12 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         self.language = tree_sitter.Language(tsjs.language())
         self.parser = tree_sitter.Parser(self.language)
         self.default_html_path = default_html_path
+        self._imported: dict[str, tuple[str, str]] = {}   # local name -> (repo path, original name)
 
     def _resolve_html_path(self, js_rel_path: str) -> str:
         """Infer paired HTML file (e.g. static/login.js -> static/index.html)."""
+        if js_rel_path.lower().endswith((".html", ".htm")):
+            return js_rel_path                       # inline <script>: the page itself is the DOM
         if self.default_html_path:
             return self.default_html_path
         parent = PurePosixPath(js_rel_path).parent.as_posix()
@@ -68,10 +72,13 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         result = AnalysisResult()
         file_id = make_file_id(rel_path)
         html_path = self._resolve_html_path(rel_path)
+        self._imported = {}
+        self._wrappers = set()
 
         tree = self.parser.parse(source_bytes)
         if not tree.root_node:
             return result
+        self._wrappers = self._find_fetch_wrappers(tree.root_node)
 
         def get_snippet(start_line: int, end_line: int) -> str:
             if 1 <= start_line <= len(source_lines):
@@ -86,6 +93,18 @@ class JavaScriptAnalyzer(BaseAnalyzer):
 
         # Pass 1: Discover all declared functions and DOM variable assignments
         for node in tree.root_node.named_children:
+            if node.type == "export_statement":          # export function f() {} / export class C {}
+                inner = node.child_by_field_name("declaration")
+                if inner is None:
+                    continue
+                node = inner
+            if node.type == "import_statement":
+                self._handle_import(node, rel_path, file_id, get_snippet, result)
+                continue
+            if node.type == "class_declaration":
+                self._handle_class(node, rel_path, file_id, declared_functions, get_snippet, result)
+                continue
+
             # function showMessage(text, isError) { ... }
             if node.type == "function_declaration":
                 name_node = node.child_by_field_name("name")
@@ -189,12 +208,18 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         if not func_node or not args_node or not args_node.named_children:
             return None
 
-        func_text = func_node.text.decode("utf-8")
+        # Only a *direct* DOM-lookup call counts: the callee must be a member expression
+        # whose property is exactly getElementById / querySelector. (A substring test
+        # wrongly matched `getElementById(...).addEventListener("click", ...)`.)
+        if func_node.type != "member_expression":
+            return None
+        prop = func_node.child_by_field_name("property")
+        method = prop.text.decode("utf-8") if prop else ""
         arg_text = _strip_quotes(args_node.named_children[0].text.decode("utf-8"))
 
-        if "getElementById" in func_text:
-            return f"#{arg_text}" if not arg_text.startswith("#") else arg_text
-        elif "querySelector" in func_text:
+        if method == "getElementById":
+            return arg_text if arg_text.startswith("#") else f"#{arg_text}"
+        if method == "querySelector":
             return arg_text
         return None
 
@@ -216,6 +241,24 @@ class JavaScriptAnalyzer(BaseAnalyzer):
             name_node = node.child_by_field_name("name")
             if name_node:
                 new_func_id = declared_functions.get(name_node.text.decode("utf-8"))
+        elif node.type == "variable_declarator":
+            val = node.child_by_field_name("value")
+            name_node = node.child_by_field_name("name")
+            if val is not None and name_node is not None and val.type in ("arrow_function", "function"):
+                new_func_id = declared_functions.get(name_node.text.decode("utf-8"), new_func_id)
+            elif val is not None and name_node is not None and current_func_id is not None:
+                # `const el = document.getElementById("x")` inside a function: remember it from here
+                # on (flow-insensitive, file-wide map; a reused variable name overwrites the entry).
+                selector = self._extract_dom_selector_from_node(val)
+                if selector:
+                    var_to_dom[name_node.text.decode("utf-8")] = selector
+        elif node.type == "method_definition":
+            name_node = node.child_by_field_name("name")
+            cls = node.parent.parent if node.parent is not None else None   # class_body -> class_declaration
+            cls_name = cls.child_by_field_name("name") if cls is not None and cls.type == "class_declaration" else None
+            if name_node is not None and cls_name is not None:
+                key = f"{cls_name.text.decode('utf-8')}.{name_node.text.decode('utf-8')}"
+                new_func_id = declared_functions.get(key, new_func_id)
 
         # Inspect call expressions
         if node.type == "call_expression":
@@ -243,6 +286,156 @@ class JavaScriptAnalyzer(BaseAnalyzer):
                 get_snippet=get_snippet,
                 result=result,
             )
+
+    @staticmethod
+    def _find_fetch_wrappers(root) -> set[str]:
+        """Names of top-level helpers whose FIRST parameter flows into fetch(), e.g.
+        `async function api(path, opts) { return fetch(path, opts); }`. Calls to them are requests."""
+        def params_of(fn):
+            p = fn.child_by_field_name("parameters")
+            if p is None:
+                p = fn.child_by_field_name("parameter")
+            if p is None:
+                return []
+            if p.type == "identifier":
+                return [p.text.decode("utf-8")]
+            return [c.text.decode("utf-8") for c in p.named_children if c.type == "identifier"]
+
+        def fetches(fn, param: str) -> bool:
+            stack = [fn]
+            while stack:
+                n = stack.pop()
+                if n.type == "call_expression":
+                    f, a = n.child_by_field_name("function"), n.child_by_field_name("arguments")
+                    if (f is not None and f.type == "identifier" and f.text == b"fetch"
+                            and a is not None and a.named_children
+                            and re.search(rf"\b{re.escape(param)}\b", a.named_children[0].text.decode("utf-8"))):
+                        return True
+                stack.extend(n.children)
+            return False
+
+        found: set[str] = set()
+        for node in root.named_children:
+            if node.type == "export_statement":
+                inner = node.child_by_field_name("declaration")
+                node = inner if inner is not None else node
+            if node.type == "function_declaration":
+                name = node.child_by_field_name("name")
+                ps = params_of(node)
+                if name is not None and ps and fetches(node, ps[0]):
+                    found.add(name.text.decode("utf-8"))
+            elif node.type == "lexical_declaration":
+                for decl in node.named_children:
+                    val, name = decl.child_by_field_name("value"), decl.child_by_field_name("name")
+                    if val is not None and name is not None and val.type in ("arrow_function", "function"):
+                        ps = params_of(val)
+                        if ps and fetches(val, ps[0]):
+                            found.add(name.text.decode("utf-8"))
+        return found
+
+    @staticmethod
+    def _resolve_module(from_path: str, spec: str) -> str | None:
+        """'./api.js' relative to static/app.js -> 'static/api.js'. Bare package names -> None."""
+        if not spec.startswith("."):
+            return None
+        target = posixpath.normpath(posixpath.join(posixpath.dirname(from_path), spec))
+        if not posixpath.splitext(target)[1]:
+            target += ".js"
+        return target
+
+    def _handle_import(self, node, rel_path, file_id, get_snippet, result) -> None:
+        source = node.child_by_field_name("source")
+        if source is None:
+            return
+        target = self._resolve_module(rel_path, _strip_quotes(source.text.decode("utf-8")))
+        if target is None:
+            return                                        # external package: not part of the repo graph
+        line = node.start_point[0] + 1
+        loc = SourceLocation(file_path=rel_path, start_line=line, end_line=node.end_point[0] + 1)
+        result.add_relationship(Relationship(
+            source_id=file_id, target_id=make_file_id(target), type=RelationType.IMPORTS,
+            kind=RelationKind.DETECTED, confidence=1.0,
+            evidence=[Evidence(snippet=get_snippet(loc.start_line, loc.end_line), location=loc)]))
+        for spec in self._named_specifiers(node):
+            self._imported[spec[1]] = (target, spec[0])
+
+    @staticmethod
+    def _named_specifiers(import_node):
+        """Yield (original_name, local_name) for `import { a, b as c } from ...`."""
+        stack = list(import_node.children)
+        while stack:
+            n = stack.pop()
+            if n.type == "import_specifier":
+                name = n.child_by_field_name("name")
+                alias = n.child_by_field_name("alias")
+                if name is not None:
+                    orig = name.text.decode("utf-8")
+                    yield (orig, alias.text.decode("utf-8") if alias is not None else orig)
+            else:
+                stack.extend(n.children)
+
+    def _handle_class(self, node, rel_path, file_id, declared_functions, get_snippet, result) -> None:
+        name_node = node.child_by_field_name("name")
+        if name_node is None:
+            return
+        cls_name = name_node.text.decode("utf-8")
+        cls_id = make_entity_id("javascript", rel_path, cls_name)
+        loc = SourceLocation(file_path=rel_path, start_line=node.start_point[0] + 1, end_line=node.end_point[0] + 1)
+        result.add_entity(Entity(id=cls_id, type=EntityType.CLASS, name=cls_name, qualified_name=cls_name,
+                                 language=Language.JAVASCRIPT, location=loc, parent_id=file_id))
+        result.add_relationship(Relationship(source_id=file_id, target_id=cls_id, type=RelationType.CONTAINS,
+                                             kind=RelationKind.DETECTED, confidence=1.0))
+        # class Child extends Base
+        for child in node.children:
+            if child.type == "class_heritage":
+                base = next((c for c in child.children if c.type == "identifier"), None)
+                if base is not None:
+                    base_name = base.text.decode("utf-8")
+                    base_path = self._imported.get(base_name, (rel_path, base_name))
+                    result.add_relationship(Relationship(
+                        source_id=cls_id, target_id=make_entity_id("javascript", base_path[0], base_path[1]),
+                        type=RelationType.INHERITS, kind=RelationKind.DETECTED, confidence=1.0,
+                        evidence=[Evidence(snippet=get_snippet(loc.start_line, loc.start_line), location=loc)]))
+        body = node.child_by_field_name("body")
+        for member in (body.named_children if body is not None else []):
+            if member.type != "method_definition":
+                continue
+            m_name = member.child_by_field_name("name")
+            if m_name is None:
+                continue
+            qualified = f"{cls_name}.{m_name.text.decode('utf-8')}"
+            m_id = make_entity_id("javascript", rel_path, qualified)
+            declared_functions[qualified] = m_id
+            m_loc = SourceLocation(file_path=rel_path, start_line=member.start_point[0] + 1,
+                                   end_line=member.end_point[0] + 1)
+            result.add_entity(Entity(id=m_id, type=EntityType.METHOD, name=m_name.text.decode("utf-8"),
+                                     qualified_name=qualified, language=Language.JAVASCRIPT,
+                                     location=m_loc, parent_id=cls_id))
+            result.add_relationship(Relationship(source_id=cls_id, target_id=m_id, type=RelationType.CONTAINS,
+                                                 kind=RelationKind.DETECTED, confidence=1.0))
+
+    def _track_class_change(self, func_node, args_node, var_to_dom, result: AnalysisResult) -> None:
+        """Record classes that JS adds/toggles at runtime, so CSS can link to them honestly."""
+        if func_node.type != "member_expression" or not args_node.named_children:
+            return
+        prop = func_node.child_by_field_name("property")
+        if not prop or prop.text.decode("utf-8") not in ("toggle", "add", "remove"):
+            return
+        class_list = func_node.child_by_field_name("object")
+        if not class_list or class_list.type != "member_expression":
+            return
+        cl_prop = class_list.child_by_field_name("property")
+        if not cl_prop or cl_prop.text.decode("utf-8") != "classList":
+            return
+        target = class_list.child_by_field_name("object")
+        selector = None
+        if target is not None and target.type == "identifier":
+            selector = var_to_dom.get(target.text.decode("utf-8"))
+        elif target is not None:
+            selector = self._extract_dom_selector_from_node(target)
+        first = args_node.named_children[0]
+        if selector and selector.startswith("#") and first.type == "string":
+            result.dynamic_classes.setdefault(selector[1:], set()).add(_strip_quotes(first.text.decode("utf-8")))
 
     def _handle_call(
         self,
@@ -281,6 +474,9 @@ class JavaScriptAnalyzer(BaseAnalyzer):
                 )
             )
 
+        # 1b. Dynamic classes: el.classList.toggle/add/remove("error")
+        self._track_class_change(func_node, args_node, var_to_dom, result)
+
         # 2. HTTP Requests: fetch(url, options)
         if func_text == "fetch" and args_node.named_children:
             self._handle_fetch_call(
@@ -306,9 +502,36 @@ class JavaScriptAnalyzer(BaseAnalyzer):
                 result=result,
             )
 
+        # 3b. this.method() inside a class method -> sibling method of the same class
+        if func_node.type == "member_expression" and caller_id != "":
+            obj = func_node.child_by_field_name("object")
+            prop = func_node.child_by_field_name("property")
+            if obj is not None and obj.type == "this" and prop is not None:
+                qualified = caller_id.split(":", 2)[-1]
+                if "." in qualified:
+                    key = f"{qualified.rsplit('.', 1)[0]}.{prop.text.decode('utf-8')}"
+                    if key in declared_functions and declared_functions[key] != caller_id:
+                        result.add_relationship(Relationship(
+                            source_id=caller_id, target_id=declared_functions[key],
+                            type=RelationType.CALLS, kind=RelationKind.DETECTED, confidence=1.0,
+                            evidence=[Evidence(snippet=snippet, location=loc)]))
+
+        # 3c. Call to a helper that wraps fetch: api("/api/x", {method: "POST"}) -> a request, one hop removed
+        if func_node.type == "identifier" and func_text in self._wrappers and args_node.named_children:
+            self._handle_fetch_call(node=node, args_node=args_node, caller_id=caller_id, loc=loc,
+                                    snippet=snippet, result=result, via_wrapper=True)
+
         # 4. Intra-file Function Calls: e.g. showMessage(...)
         if func_node.type == "identifier":
             fn_name = func_text
+            if fn_name in self._imported and fn_name not in declared_functions:
+                # Named import: `import { login } from "./api.js"` then login()
+                target_path, original = self._imported[fn_name]
+                result.add_relationship(Relationship(
+                    source_id=caller_id,
+                    target_id=make_entity_id("javascript", target_path, original),
+                    type=RelationType.CALLS, kind=RelationKind.DETECTED, confidence=1.0,
+                    evidence=[Evidence(snippet=snippet, location=loc)]))
             if fn_name in declared_functions and declared_functions[fn_name] != caller_id:
                 result.add_relationship(
                     Relationship(
@@ -329,6 +552,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         loc: SourceLocation,
         snippet: str,
         result: AnalysisResult,
+        via_wrapper: bool = False,
     ) -> None:
         url_arg = args_node.named_children[0]
         method = "GET"
@@ -362,6 +586,8 @@ class JavaScriptAnalyzer(BaseAnalyzer):
                     if key_node and val_node and key_node.text.decode("utf-8").lower() == "method":
                         method = _strip_quotes(val_node.text.decode("utf-8")).upper()
 
+        if route and via_wrapper and kind == RelationKind.DETECTED:
+            kind, confidence = RelationKind.INFERRED, 0.85        # reached through a helper, not a literal fetch
         if route:
             endpoint_id = make_endpoint_id(method, route)
             result.add_relationship(

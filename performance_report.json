@@ -1,0 +1,58 @@
+[
+  {
+    "label": "synthetic (50 modules)",
+    "files": 71,
+    "entities": 321,
+    "relationships": 497,
+    "ingest_cold_ms": 406.6,
+    "ingest_ms": 32.3,
+    "analyze_ms": 252.9,
+    "graph_build_ms": 8.0,
+    "impact_query_ms_avg": 1.09,
+    "qa_index_build_ms": 39.4,
+    "qa_answer_ms_avg": 57.7,
+    "peak_memory_mb": 1.6
+  },
+  {
+    "label": "synthetic (200 modules)",
+    "files": 281,
+    "entities": 1281,
+    "relationships": 1997,
+    "ingest_cold_ms": 1174.7,
+    "ingest_ms": 202.9,
+    "analyze_ms": 873.5,
+    "graph_build_ms": 24.4,
+    "impact_query_ms_avg": 2.65,
+    "qa_index_build_ms": 151.3,
+    "qa_answer_ms_avg": 206.2,
+    "peak_memory_mb": 6.2
+  },
+  {
+    "label": "synthetic (800 modules)",
+    "files": 1121,
+    "entities": 5121,
+    "relationships": 7997,
+    "ingest_cold_ms": 5864.9,
+    "ingest_ms": 666.4,
+    "analyze_ms": 3647.9,
+    "graph_build_ms": 162.1,
+    "impact_query_ms_avg": 11.82,
+    "qa_index_build_ms": 602.3,
+    "qa_answer_ms_avg": 877.8,
+    "peak_memory_mb": 24.8
+  },
+  {
+    "label": "RepoMind itself (backend/repomind)",
+    "files": 47,
+    "entities": 405,
+    "relationships": 637,
+    "ingest_cold_ms": 45.9,
+    "ingest_ms": 31.8,
+    "analyze_ms": 799.9,
+    "graph_build_ms": 5.4,
+    "impact_query_ms_avg": 0.74,
+    "qa_index_build_ms": 134.8,
+    "qa_answer_ms_avg": 79.9,
+    "peak_memory_mb": 4.3
+  }
+]

@@ -1,4 +1,5 @@
 import logging
+import posixpath
 from pathlib import PurePosixPath
 
 import tree_sitter
@@ -20,6 +21,11 @@ from .base import AnalysisResult, BaseAnalyzer
 log = logging.getLogger(__name__)
 
 
+# Tags kept even without an id/class; structural/metadata tags are never kept for their class alone.
+NOTABLE_TAGS = {"form", "button", "input", "select", "textarea", "a"}
+IGNORED_TAGS = {"html", "head", "body", "script", "style", "link", "meta", "title"}
+
+
 def _strip_quotes(text: str) -> str:
     text = text.strip()
     if len(text) >= 2 and text[0] in ("'", '"') and text[-1] == text[0]:
@@ -27,10 +33,20 @@ def _strip_quotes(text: str) -> str:
     return text
 
 
+def _is_local(raw_path: str) -> bool:
+    """False for CDN / absolute URLs and data URIs, which are not files of this repository."""
+    return not raw_path.strip().lower().startswith(("http://", "https://", "//", "data:", "mailto:"))
+
+
 def _clean_asset_path(raw_path: str, html_rel_path: str) -> str:
-    """Normalize asset link path (e.g. '/static/login.js' or 'login.js' -> 'static/login.js')."""
-    clean = raw_path.strip().lstrip("/")
-    return clean
+    """Repo-relative path of a linked asset.
+    '/static/login.js'  -> 'static/login.js'            (root-relative)
+    'js/app.js' in 'static/index.html' -> 'static/js/app.js'   (relative to the page)
+    """
+    clean = raw_path.strip().split("?")[0].split("#")[0]
+    if clean.startswith("/"):
+        return clean.lstrip("/")
+    return posixpath.normpath(posixpath.join(posixpath.dirname(html_rel_path), clean))
 
 
 class HTMLAnalyzer(BaseAnalyzer):
@@ -83,8 +99,14 @@ class HTMLAnalyzer(BaseAnalyzer):
                 )
                 snippet = get_snippet(start_line, end_line)
 
+                # Inline script: remember its text and where it starts so the JS analyzer can read it
+                if tag_name == "script" and "src" not in attrs:
+                    raw = next((c for c in node.children if c.type == "raw_text"), None)
+                    if raw is not None and raw.text.strip():
+                        result.inline_scripts.append((raw.start_point[0], raw.text.decode("utf-8", errors="replace")))
+
                 # Asset reference: <script src="...">
-                if tag_name == "script" and "src" in attrs:
+                if tag_name == "script" and "src" in attrs and _is_local(attrs["src"]):
                     asset_rel = _clean_asset_path(attrs["src"], rel_path)
                     target_file_id = make_file_id(asset_rel)
                     result.add_relationship(
@@ -99,7 +121,7 @@ class HTMLAnalyzer(BaseAnalyzer):
                     )
 
                 # Asset reference: <link rel="stylesheet" href="...">
-                elif tag_name == "link" and "href" in attrs:
+                elif tag_name == "link" and "href" in attrs and _is_local(attrs["href"]):
                     asset_rel = _clean_asset_path(attrs["href"], rel_path)
                     target_file_id = make_file_id(asset_rel)
                     result.add_relationship(
@@ -114,9 +136,27 @@ class HTMLAnalyzer(BaseAnalyzer):
                     )
 
                 # HTML Element with ID
-                if "id" in attrs:
-                    raw_id = attrs["id"]
-                    elem_selector = f"#{raw_id}"
+                # Navigation link to another page: <a href="archive.html">
+                if tag_name == "a" and attrs.get("href", "").split("#")[0].lower().endswith((".html", ".htm")) \
+                        and not attrs["href"].startswith(("http://", "https://")):
+                    result.add_relationship(
+                        Relationship(
+                            source_id=file_id,
+                            target_id=make_file_id(_clean_asset_path(attrs["href"].split("#")[0], rel_path)),
+                            type=RelationType.REFERENCES,
+                            kind=RelationKind.DETECTED,
+                            confidence=1.0,
+                            evidence=[Evidence(snippet=snippet, location=loc)],
+                        )
+                    )
+
+                # Elements with an id are always entities. Elements without one are kept when they
+                # matter for the application: form controls, links, or anything with a class
+                # (so CSS class selectors have something to match).
+                if "id" in attrs or tag_name in NOTABLE_TAGS or (
+                        "class" in attrs and tag_name not in IGNORED_TAGS):
+                    raw_id = attrs.get("id", "")
+                    elem_selector = f"#{raw_id}" if raw_id else f"{tag_name}@{start_line}"
                     entity_id = f"html:{rel_path}:{elem_selector}"
                     classes = attrs.get("class", "").split()
 

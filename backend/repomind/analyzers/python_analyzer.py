@@ -29,7 +29,7 @@ class PythonASTVisitor(ast.NodeVisitor):
     FastAPI endpoints, and method/function calls.
     """
 
-    def __init__(self, rel_path: str, source_lines: list[str]):
+    def __init__(self, rel_path: str, source_lines: list[str], tree: ast.AST | None = None):
         self.rel_path = rel_path.replace("\\", "/")
         self.source_lines = source_lines
         self.result = AnalysisResult()
@@ -43,6 +43,53 @@ class PythonASTVisitor(ast.NodeVisitor):
         self.imported_symbols: dict[str, str] = {}
         # e.g. "auth_service": "AuthService", "self.users": "UserRepository"
         self.var_types: dict[str, str] = {}
+
+        # Pre-pass index of what this module defines, so calls to things defined *later*
+        # in the file (or later in a class) still resolve.
+        self.local_functions: set[str] = set()
+        self.local_classes: set[str] = set()
+        self.class_methods: dict[str, set[str]] = {}
+        self.class_bases: dict[str, list[str]] = {}
+        if tree is not None:
+            for node in getattr(tree, "body", []):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    self.local_functions.add(node.name)
+                elif isinstance(node, ast.ClassDef):
+                    self.local_classes.add(node.name)
+                    self.class_bases[node.name] = [b.id for b in node.bases if isinstance(b, ast.Name)]
+                    self.class_methods[node.name] = {
+                        n.name for n in node.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    }
+
+    def _method_owner(self, cls: str, method: str):
+        """Where does `self.method()` inside class `cls` go? -> (file, class, kind, confidence) or None.
+        Own class: certain. Local base class that defines it: inferred 0.9 (a subclass could override).
+        Imported base class: unverifiable, so only a weak heuristic."""
+        if method in self.class_methods.get(cls, ()):
+            return (self.rel_path, cls, RelationKind.DETECTED, 1.0)
+        seen: set[str] = set()
+        queue = list(self.class_bases.get(cls, []))
+        while queue:
+            base = queue.pop(0)
+            if base in seen:
+                continue
+            seen.add(base)
+            if base in self.class_methods:
+                if method in self.class_methods[base]:
+                    return (self.rel_path, base, RelationKind.INFERRED, 0.9)
+                queue.extend(self.class_bases.get(base, []))
+            elif base in self.imported_symbols:
+                return (self.imported_symbols[base], base, RelationKind.HEURISTIC, 0.6)
+        return None
+
+    def _module_path(self, module: str | None, level: int = 0) -> str:
+        """Dotted module (+ relative-import level) -> repo-relative .py path."""
+        parts = module.split(".") if module else []
+        if level:
+            base = PurePosixPath(self.rel_path).parent.parts
+            base = base[: max(len(base) - (level - 1), 0)]
+            parts = [*base, *parts]
+        return "/".join(parts) + ".py"
 
     def _get_snippet(self, start_line: int, end_line: int) -> str:
         """Extract lines of code as a trimmed snippet."""
@@ -79,8 +126,8 @@ class PythonASTVisitor(ast.NodeVisitor):
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         file_id = make_file_id(self.rel_path)
-        if node.module:
-            mod_path = node.module.replace(".", "/") + ".py"
+        if node.module or node.level:
+            mod_path = self._module_path(node.module, node.level)
             target_file_id = make_file_id(mod_path)
             self.result.add_relationship(
                 Relationship(
@@ -107,17 +154,52 @@ class PythonASTVisitor(ast.NodeVisitor):
 
         self.generic_visit(node)
 
+    @staticmethod
+    def _annotation_class(ann: ast.expr | None) -> str | None:
+        """Class named by a type annotation: Foo, "Foo", Optional[Foo], Foo | None. Else None."""
+        if isinstance(ann, ast.Name):
+            return ann.id
+        if isinstance(ann, ast.Constant) and isinstance(ann.value, str) and ann.value.isidentifier():
+            return ann.value
+        if isinstance(ann, ast.Subscript) and isinstance(ann.value, ast.Name) and ann.value.id == "Optional":
+            return PythonASTVisitor._annotation_class(ann.slice)
+        if isinstance(ann, ast.BinOp) and isinstance(ann.op, ast.BitOr):           # Foo | None
+            for side in (ann.left, ann.right):
+                if not (isinstance(side, ast.Constant) and side.value is None):
+                    return PythonASTVisitor._annotation_class(side)
+        return None
+
+    @staticmethod
+    def _target_key(target: ast.expr) -> str | None:
+        if isinstance(target, ast.Name):
+            return target.id
+        if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name):
+            return f"{target.value.id}.{target.attr}"          # e.g. "self.users"
+        return None
+
     def visit_Assign(self, node: ast.Assign) -> None:
-        """Track variable instantiations: e.g. auth_service = AuthService() or self.users = UserRepository()"""
+        """Track what a variable holds, from three sources:
+        x = Foo()            constructor call
+        self.g = graph       copy of a variable whose type is already known (e.g. an annotated parameter)
+        """
+        cls_name = None
         if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
             cls_name = node.value.func.id
+        elif isinstance(node.value, ast.Name):
+            cls_name = self.var_types.get(node.value.id)
+        if cls_name:
             for target in node.targets:
-                if isinstance(target, ast.Name):
-                    self.var_types[target.id] = cls_name
-                elif isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name):
-                    key = f"{target.value.id}.{target.attr}"
+                key = self._target_key(target)
+                if key:
                     self.var_types[key] = cls_name
+        self.generic_visit(node)
 
+    def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+        """x: Foo = ...  /  self.x: Foo = ...  (the annotation wins over the value)."""
+        cls_name = self._annotation_class(node.annotation)
+        key = self._target_key(node.target)
+        if cls_name and key:
+            self.var_types[key] = cls_name
         self.generic_visit(node)
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
@@ -153,6 +235,31 @@ class PythonASTVisitor(ast.NodeVisitor):
                 confidence=1.0,
             )
         )
+
+        # Class INHERITS Base. Resolved through same-file classes or imports; bases from
+        # external packages (e.g. pydantic.BaseModel) are reported as unresolved later.
+        for base in node.bases:
+            if isinstance(base, ast.Name):
+                base_name = base.id
+                if base_name in self.local_classes:
+                    base_path = self.rel_path
+                elif base_name in self.imported_symbols:
+                    base_path = self.imported_symbols[base_name]
+                else:
+                    continue
+                self.result.add_relationship(
+                    Relationship(
+                        source_id=entity_id,
+                        target_id=make_entity_id("python", base_path, base_name),
+                        type=RelationType.INHERITS,
+                        kind=RelationKind.DETECTED,
+                        confidence=1.0,
+                        evidence=[Evidence(
+                            snippet=self._get_snippet(node.lineno, node.lineno),
+                            location=SourceLocation(file_path=self.rel_path, start_line=node.lineno, end_line=node.lineno),
+                        )],
+                    )
+                )
 
         self.class_stack.append(node.name)
         self.generic_visit(node)
@@ -207,13 +314,55 @@ class PythonASTVisitor(ast.NodeVisitor):
             )
         )
 
+        # Parameter annotations that name a known class: function USES that type
+        # (e.g. login(request: LoginRequest) -> the request model).
+        for arg in [*node.args.args, *node.args.kwonlyargs]:
+            ann = arg.annotation
+            if isinstance(ann, ast.Name) and arg.arg not in ("self", "cls"):
+                if ann.id in self.local_classes:
+                    type_path = self.rel_path
+                elif ann.id in self.imported_symbols:
+                    type_path = self.imported_symbols[ann.id]
+                else:
+                    continue
+                self.result.add_relationship(
+                    Relationship(
+                        source_id=entity_id,
+                        target_id=make_entity_id("python", type_path, ann.id),
+                        type=RelationType.USES,
+                        kind=RelationKind.DETECTED,
+                        confidence=1.0,
+                        evidence=[Evidence(
+                            snippet=self._get_snippet(node.lineno, node.lineno),
+                            location=SourceLocation(file_path=self.rel_path, start_line=node.lineno, end_line=node.lineno),
+                        )],
+                    )
+                )
+
         # Check decorators for API Endpoints (e.g. @app.get("/"), @app.post("/api/login"))
         self._check_route_decorators(node, func_entity)
 
         # Traverse body with current function context for call tracking
+        # Decorators and default values run at definition time in the *enclosing*
+        # scope, so they must not be attributed to this function as calls.
+        for dec in node.decorator_list:
+            self.visit(dec)
+        for default in [*node.args.defaults, *node.args.kw_defaults]:
+            if default is not None:
+                self.visit(default)
+
         prev_callable = self.current_callable_id
         self.current_callable_id = entity_id
-        self.generic_visit(node)
+        outer_types = dict(self.var_types)
+        for arg in [*node.args.args, *node.args.kwonlyargs]:
+            cls = self._annotation_class(arg.annotation)
+            if cls and arg.arg not in ("self", "cls"):
+                self.var_types[arg.arg] = cls                # parameter annotation = declared type
+        for stmt in node.body:
+            self.visit(stmt)
+        # Locals and parameters must not leak into the next function; `self.x` attributes do persist
+        # (they are set in __init__ and used by other methods).
+        self.var_types = {**outer_types, **{k: v for k, v in self.var_types.items() if k.startswith("self.")}}
         self.current_callable_id = prev_callable
 
     def _check_route_decorators(
@@ -295,14 +444,31 @@ class PythonASTVisitor(ast.NodeVisitor):
             method_name = node.func.attr
             receiver = None
 
-            if isinstance(node.func.value, ast.Name):
+            owner = (self._method_owner(self.class_stack[-1], method_name)
+                     if isinstance(node.func.value, ast.Name) and node.func.value.id == "self" and self.class_stack
+                     else None)
+            if owner:
+                # self.helper(): own class (detected), local base (inferred) or imported base (heuristic)
+                owner_path, owner_cls, owner_kind, owner_conf = owner
+                self.result.add_relationship(
+                    Relationship(
+                        source_id=self.current_callable_id,
+                        target_id=make_entity_id("python", owner_path, f"{owner_cls}.{method_name}"),
+                        type=RelationType.CALLS,
+                        kind=owner_kind,
+                        confidence=owner_conf,
+                        evidence=[Evidence(snippet=snippet, location=call_loc)],
+                    )
+                )
+            elif isinstance(node.func.value, ast.Name):
                 receiver = node.func.value.id  # e.g. "auth_service"
             elif isinstance(node.func.value, ast.Attribute) and isinstance(node.func.value.value, ast.Name):
                 receiver = f"{node.func.value.value.id}.{node.func.value.attr}"  # e.g. "self.users"
 
             if receiver and receiver in self.var_types:
                 cls_name = self.var_types[receiver]
-                mod_path = self.imported_symbols.get(cls_name)
+                mod_path = self.imported_symbols.get(cls_name) or (
+                    self.rel_path if cls_name in self.local_classes else None)
                 if mod_path:
                     target_id = make_entity_id("python", mod_path, f"{cls_name}.{method_name}")
                     self.result.add_relationship(
@@ -319,8 +485,22 @@ class PythonASTVisitor(ast.NodeVisitor):
         # Case 2: Direct function call in same module, e.g. helper_func()
         elif isinstance(node.func, ast.Name):
             func_name = node.func.id
+            if func_name in self.local_functions or func_name in self.local_classes:
+                # Function/class defined in this same module: syntactically certain.
+                own_id = make_entity_id("python", self.rel_path, func_name)
+                if self.current_callable_id != own_id:      # ignore plain recursion noise
+                    self.result.add_relationship(
+                        Relationship(
+                            source_id=self.current_callable_id,
+                            target_id=own_id,
+                            type=RelationType.CALLS,
+                            kind=RelationKind.DETECTED,
+                            confidence=1.0,
+                            evidence=[Evidence(snippet=snippet, location=call_loc)],
+                        )
+                    )
             # If function is imported from another module
-            if func_name in self.imported_symbols:
+            elif func_name in self.imported_symbols:
                 mod_path = self.imported_symbols[func_name]
                 target_id = make_entity_id("python", mod_path, func_name)
                 self.result.add_relationship(
@@ -345,9 +525,9 @@ class PythonAnalyzer(BaseAnalyzer):
             tree = ast.parse(content, filename=rel_path)
         except SyntaxError as err:
             log.warning("SyntaxError parsing %s: %s", rel_path, err)
-            return AnalysisResult()
+            return AnalysisResult(errors=[f"{rel_path}: syntax error at line {err.lineno}: {err.msg}"])
 
         source_lines = content.splitlines()
-        visitor = PythonASTVisitor(rel_path=rel_path, source_lines=source_lines)
+        visitor = PythonASTVisitor(rel_path=rel_path, source_lines=source_lines, tree=tree)
         visitor.visit(tree)
         return visitor.result

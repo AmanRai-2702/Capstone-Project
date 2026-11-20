@@ -1,316 +1,116 @@
-# RepoMind — Master Project Handover & Development Roadmap
+# RepoMind: Handover, Spec Compliance and Viva Guide
 
-**Project Name**: RepoMind — AI-Powered Multi-Language Repository Intelligence and Code Impact Analysis  
-**Project Level**: BTech Capstone Project (Final Year Computer Science, AI/ML Specialization)  
-**Current Date**: October / November 2026  
-**Environment**: Windows 11, Python 3.13.0, PowerShell  
-**Active Test Suite Status**: **45 / 45 Tests Passing (100%) in ~0.5s**  
+**RepoMind: AI-Powered Multi-Language Repository Intelligence and Code Impact Analysis**
+BTech final-year capstone. Windows 11, Python 3.13, PowerShell or cmd. Needs Python 3.11+ (`StrEnum`).
 
----
+## 1. Status (every number below was produced by running the code)
 
-## 1. Executive Summary & Core Identity
+| Check | Result |
+|---|---|
+| Automated tests | **181 pass** (`python -m pytest -c backend/pytest.ini backend/tests`) |
+| Benchmark `login_app` (FastAPI + vanilla JS) | 39/39 entities, 60/60 relationships; 0 missing, 0 dangling, 0 forbidden edges |
+| Benchmark `notes_app` (Flask + multi-page + ES modules), built *after* the analyzers | 52/52 entities, 83/83 relationships. It first scored **84.3% recall** and exposed 6 real bugs (section 5) |
+| Browser end-to-end check (`backend/e2e/ui_check.py`, headless Edge) | 20/20 journeys pass, no console errors |
+| Dogfooding: RepoMind analysing its own source | works; its own UI is connected to its own API routes |
 
-### What is RepoMind?
-RepoMind is **not** a basic GitHub snippet retrieval chatbot. It is a repository intelligence system that statically analyzes polyglot codebases (Python, JavaScript, HTML, CSS), extracts syntactic and semantic components, constructs a repository knowledge graph, traces end-to-end application flows, and performs **change-impact analysis** (blast-radius calculation).
+Benchmark ground truth was written from the *source code*, not from tool output. `forbidden_relationships` lists known false positives that must never come back.
 
-### The Core Value Proposition: Cross-Language Tracing
-Modern web applications span multiple languages. RepoMind connects components across these boundaries:
-$$\text{HTML UI Element} \xrightarrow{\text{TRIGGERS}} \text{JS Event Handler} \xrightarrow{\text{REQUESTS}} \text{FastAPI Endpoint} \xrightarrow{\text{HANDLES}} \text{Python Service Method} \xrightarrow{\text{CALLS}} \text{DB Repository}$$
+## 2. Spec compliance (your project description, section by section)
 
-It differentiates between:
-- **`detected` relationships**: Directly observed via syntax (e.g. decorator `@app.post("/api/login")`, DOM query `getElementById("login-form")`).
-- **`inferred` relationships**: Derived via static heuristics or local type propagation (e.g. dynamic class toggling `.message.error`, imported instance calls `auth_service.authenticate()`).
+| # | Spec item | State |
+|---|---|---|
+| A | Ingestion: local folder, GitHub URL, **ZIP** | Done. ZIP extraction rejects zip-slip, absolute paths, symlinks, zip bombs |
+| A | Configurable exclusions, ignore generated/binary, unreadable files, metadata | Done: built-in list, `REPOMIND_IGNORE`, `--exclude`, `.repomindignore`, size and file-count limits; unreadable/malformed files are reported, not fatal |
+| B | Python analyzer: classes, functions, async, methods, imports, calls, **inheritance**, decorators, endpoints, **request model** | Done (annotation-based type tracking, `self.x()` incl. inherited, relative and `src/` imports, `__init__` re-exports). Not done: module/variable entities |
+| B | JavaScript: functions, arrows, **classes, imports/exports**, calls, DOM, events, fetch | Done, plus inline `<script>` blocks and `fetch` wrapper helpers. Not done: frameworks (React/Vue), axios, dynamic imports |
+| B | HTML: elements, ids, **classes**, forms/buttons/inputs, links, scripts, stylesheets, containment | Done (page-relative asset paths, CDN skipped, navigation links) |
+| B | CSS: selectors, matching, unmatched, dynamic, unsupported | Done: compound `tag#id.class`; a stylesheet only styles pages that link it; dynamic classes are *inferred* only with JS evidence; complex selectors are never guessed |
+| 5 | Unified model, stable ids, evidence, confidence, 4 detection levels | Done: `detected` / `inferred` / `heuristic` + a separate `unresolved` list with reasons |
+| 5 | Relationship taxonomy | CONTAINS, IMPORTS, CALLS, REFERENCES, TRIGGERS, REQUESTS, HANDLES, STYLES, INHERITS, USES. Declared but **never produced**: DEFINES, RENDERS, IMPLEMENTS, DEPENDS_ON, RETURNS |
+| 6 | Knowledge graph (NetworkX), traversal, paths, export, visualisation | Done: raw + flow + dependency views, GraphML/JSON export, Cytoscape UI. Neo4j not used (deliberate) |
+| 7 | Cross-language flow, route normalisation, method matching, ambiguity, unresolved | Done (`resolution/`): `{id}` = `<int:id>` = `:id` = `${x}`, concrete values match parameters, method mismatch reported, prefix-mounted routes matched heuristically, JS paired to the page that includes it (also through imports) |
+| 8 | Impact analysis: direct/indirect/execution-flow/uncertain, paths, evidence, risk | Done, plus **diff-based** impact (`--since REF`, `--diff-file`, API `diff`) and **suggested tests**. Not done: data-flow dependencies |
+| 9 | Q&A / RAG: hybrid retrieval, grounded, cited, refuses, provider-independent | Done: graph linking + TF-IDF vector index, intents (flow, impact, relations, locate, architecture, explain), citation verification, prompt-injection fencing. Dense embeddings (`sentence-transformers`) and `AnthropicProvider` are written but **never run** |
+| 10 | Modular architecture | Done (see section 3). No `impact/` package (it lives in `services/impact_service.py`) |
+| 11 | Frontend | Done as a static page (Cytoscape): upload, graph, explorer + search/filter, flows, impact, diff, gaps, chat, source viewer. **Not** Next.js/React |
+| 12 | CLI | `ingest analyze graph trace impact ask serve`, `--json`, `--exclude`, helpful errors |
+| 13 | API | All listed endpoints plus relationships, upload, jobs (background analysis), unresolved, delete; validation, limits, request logging, persistence across restarts |
+| 14 | Testing | Unit + integration + 2 benchmarks + performance script. Part of the spec not covered: evaluation of Q&A answer quality at scale, impact-accuracy ground truth |
+| 15 | Security | Repository code is never executed; zip/path-traversal/symlink defences; URL validation; git ref validation; resource limits; prompt-injection fencing; local paths can be disabled |
+| 17 | Phase 9 (agents, suggestions, auto-fix) | **Not implemented** |
 
----
+## 3. Architecture (`backend/repomind/`)
 
-## 2. Project Architecture & Directory Layout
+    ingestion/   sources.py (local, GitHub, zip)   discovery.py (walk, ignore, limits)   classifier.py
+    analyzers/   python_analyzer.py (ast)   javascript_analyzer.py / html_analyzer.py / css_analyzer.py (Tree-sitter)
+    resolution/  resolver.py     candidate links -> real entities across files/languages; unresolved with reasons
+    services/    repository_service.py  analysis_service.py (orchestration, error isolation)  impact_service.py
+    graph/       repository_graph.py    NetworkX multigraph + flow view + dependency view + export
+    retrieval/   chunker.py  embedder.py (TF-IDF, optional dense)  index.py (inverted-index cosine search)
+    qa/          retriever.py (intents, hybrid linking)  providers.py (template, anthropic)  service.py (citation check)
+    storage/     store.py        JSON persistence of analyses
+    api/         app.py + static/index.html
+    models/      Entity, Relationship, Evidence, RepositoryAnalysis, UnresolvedReference, Impact*
 
-```text
-Capstone Project/
-├── backend/
-│   ├── pytest.ini                         # Pytest configuration (pythonpath = ., testpaths = tests)
-│   ├── requirements.txt                   # Backend dependencies
-│   ├── repomind/
-│   │   ├── __init__.py
-│   │   ├── cli.py                         # Unified CLI (ingest & analyze commands)
-│   │   ├── config.py                      # Settings & environment variables
-│   │   ├── logging_setup.py               # Configured logging
-│   │   ├── models/                        # STAGE 0: Pydantic Foundation Models
-│   │   │   ├── __init__.py
-│   │   │   ├── analysis.py                # RepositoryAnalysis container model
-│   │   │   ├── entity.py                  # Unified Entity schema
-│   │   │   ├── enums.py                   # Language, EntityType, RelationType, RelationKind
-│   │   │   ├── ids.py                     # Deterministic, stable ID generators
-│   │   │   ├── location.py                # SourceLocation (file, start_line, end_line)
-│   │   │   ├── relationship.py            # Relationship & Evidence schemas
-│   │   │   └── repository.py              # FileRecord & RepositoryInventory models
-│   │   ├── ingestion/                     # STAGE 1: Discovery & Filtering
-│   │   │   ├── __init__.py
-│   │   │   ├── classifier.py              # File categorization (source, doc, config, other)
-│   │   │   ├── discovery.py               # Directory walking, ignore rules, size limits
-│   │   │   ├── errors.py                  # Ingestion exception classes
-│   │   │   └── sources.py                 # LocalFolderSource & GitHubSource (shallow clone)
-│   │   ├── analyzers/                     # STAGE 2: AST & Tree-Sitter Analyzers
-│   │   │   ├── __init__.py
-│   │   │   ├── base.py                    # BaseAnalyzer interface & AnalysisResult container
-│   │   │   ├── python_analyzer.py         # Python AST parser (classes, methods, FastAPI routes, calls)
-│   │   │   ├── javascript_analyzer.py     # JS Tree-sitter parser (DOM, fetch, event listeners, calls)
-│   │   │   ├── html_analyzer.py           # HTML Tree-sitter parser (elements, IDs, containment, assets)
-│   │   │   └── css_analyzer.py            # CSS Tree-sitter parser (selectors, STYLES matching)
-│   │   └── services/                      # STAGE 1 & 3: High-Level Services
-│   │       ├── __init__.py
-│   │       ├── repository_service.py      # Ingests repo to RepositoryInventory
-│   │       └── analysis_service.py        # Orchestrates multi-language parsing pipeline
-│   └── tests/                             # Comprehensive Automated Test Suite (45 tests)
-│       ├── test_models.py                 # 7 tests: Schema validation, stable IDs, roundtrips
-│       ├── test_ingestion.py              # 16 tests: Ignore filters, cloning, classification
-│       ├── test_python_analyzer.py        # 6 tests: Classes, methods, FastAPI decorators, calls
-│       ├── test_javascript_analyzer.py    # 6 tests: Functions, DOM queries, fetch routes, triggers
-│       ├── test_html_analyzer.py          # 4 tests: Element IDs, containment, asset links
-│       ├── test_css_analyzer.py           # 3 tests: Selectors, styles matching, dead CSS
-│       └── test_analysis_service.py       # 3 tests: Full pipeline integration & cross-language trace
-├── test_apps/
-│   └── login_app/                         # Evaluation Benchmark Application
-│       ├── app.py                         # FastAPI backend
-│       ├── requirements.txt
-│       ├── ground_truth.json              # 34 expected entities & 34 relationships
-│       ├── services/auth_service.py       # Authentication business logic
-│       ├── repositories/user_repository.py# In-memory user database
-│       └── static/
-│           ├── index.html                 # UI structure
-│           ├── login.js                   # Client logic, fetch calls, DOM handlers
-│           └── style.css                  # UI styling
-├── .venv/                                 # Installed virtual environment
-├── requirements.txt                       # Root requirements
-└── HANDOVER.md                            # THIS FILE
-```
+Data flow: path/URL/zip -> inventory -> analyzers (HTML first, then Python and JS incl. inline scripts, then CSS) -> `RelationshipResolver` -> `RepositoryAnalysis` -> `RepositoryGraph` -> impact / Q&A / API / UI.
 
----
+## 4. Design decisions you must be able to defend
 
-## 3. Work Completed So Far (Stages 0 to 3)
+* **Flow vs dependency views.** Raw edge direction is syntactic (`HANDLES` points function -> endpoint, but a request flows endpoint -> function). Two small direction tables make semantics explicit and testable.
+* **Impact = reverse reachability** over the dependency view; BFS gives the shortest chain, which doubles as the explanation. Confidence is the product of hop confidences; risk is a transparent rule, not a trained model.
+* **Never invent a link.** Anything the resolver cannot connect goes to `unresolved` with a reason (`external_package`, `no_matching_endpoint`, `method_mismatch`, ...). A request to `/pong` with no backend route is reported, not attached to a guess.
+* **Q&A cannot hallucinate by construction.** Facts come only from the graph and source; the default provider only re-formats them; citations in any LLM answer are verified; no matching entity means refusal; a similarity-only match is labelled as such; repository text sent to an LLM is fenced as untrusted.
+* **Why TF-IDF and an in-memory index** instead of a vector database: repositories have thousands of entities, so it is instant, needs no setup or downloads, is deterministic and easy to explain. The `Embedder` interface is the seam for dense models or ChromaDB.
+* **Why a second benchmark.** 100% on the app the analyzers were built against proves little. `notes_app` was written afterwards, scored 84.3% recall, and the failures drove real fixes. That is the evidence that the evaluation can fail.
 
-### Stage 0: Foundation Data Models
-- **`Entity`**: Stable ID (`language:filepath:qualified_name`), type (`CLASS`, `METHOD`, `FUNCTION`, `HTML_ELEMENT`, `CSS_SELECTOR`, `API_ENDPOINT`), location (`SourceLocation`), parent ID, metadata.
-- **`Relationship`**: `source_id`, `target_id`, `type` (`CONTAINS`, `HANDLES`, `CALLS`, `REQUESTS`, `TRIGGERS`, `STYLES`, `REFERENCES`, `IMPORTS`), `kind` (`detected` vs `inferred`), `confidence` (0.0 to 1.0), and `evidence` (code snippet and line numbers).
-- **`ids.py`**: Deterministic generators:
-  - `make_entity_id("python", "app.py", "login")` $\to$ `"python:app.py:login"`
-  - `make_endpoint_id("POST", "/api/login")` $\to$ `"api:POST:/api/login"`
-  - `make_file_id("static/login.js")` $\to$ `"file:static/login.js"`
+## 5. Bugs the benchmarks and dogfooding found (good viva material)
 
-### Stage 1: Repository Ingestion & Discovery
-- Implemented in `backend/repomind/ingestion/` and `RepositoryService.ingest(location)`.
-- Discovers files while safely ignoring noise (`.git`, `node_modules`, `__pycache__`, binaries, minified bundles, `.env`, oversized files).
-- Produces typed `RepositoryInventory` with language breakdown, category counts, and line numbers.
+1. `getElementById(...).addEventListener("click")` produced a fake `#click` reference (substring test).
+2. Decorators were counted as calls made by the function.
+3. Edges to external packages pointed at entities that did not exist.
+4. CSS compound selectors were "inferred" without any evidence.
+5. HTML asset paths ignored the page's folder (`js/app.js` became `js/app.js`, not `static/js/app.js`), which silently broke most JS-to-HTML links.
+6. `from repomind.graph import X` never resolved when the analysed folder is the package itself, or with `src/` layouts and `__init__` re-exports.
+7. Python type tracking ignored annotations, so typed code (e.g. FastAPI services) lost its call edges.
+8. A suggested-tests bug, a stemmer inconsistency, a stale-panel UI bug and a favicon 404, all found by their own tests.
 
-### Stage 2: Single-Language AST & Tree-Sitter Analyzers
-- **Python Analyzer (`PythonAnalyzer`)**:
-  - Uses Python's built-in `ast` module.
-  - Extracts classes, methods, top-level functions.
-  - Automatically identifies FastAPI/Flask route decorators (`@app.get("/")`, `@app.post("/api/login")`) and generates `api:METHOD:/route` endpoint entities and `HANDLES` relationships.
-  - Performs local type tracking (`auth_service = AuthService()`) to resolve inter-module method calls (`auth_service.authenticate()`).
-- **JavaScript Analyzer (`JavaScriptAnalyzer`)**:
-  - Uses `tree-sitter` and `tree-sitter-javascript`.
-  - Extracts functions and arrow functions.
-  - Identifies DOM selections (`document.getElementById("login-form")`, `querySelector("#message")`) as `REFERENCES` to HTML elements.
-  - Analyzes `fetch()` calls: static routes (`/api/login`) and template literals (`` `/api/users/${userId}` `` $\to$ `/api/users/{user_id}`).
-  - Resolves event listeners (`form.addEventListener("submit", handleLogin)`) as `TRIGGERS` relationships.
-- **HTML Analyzer (`HTMLAnalyzer`)**:
-  - Uses `tree-sitter-html`.
-  - Extracts all elements with IDs (`#login-card`, `#username`, `#password`, etc.).
-  - Builds DOM containment hierarchy (`#login-card` `CONTAINS` `#login-form`).
-  - Identifies asset tags (`<script src>`, `<link href>`) as `REFERENCES` to files.
-- **CSS Analyzer (`CSSAnalyzer`)**:
-  - Uses `tree-sitter-css`.
-  - Extracts CSS rule selectors.
-  - Matches selectors against parsed HTML elements to emit `STYLES` relationships.
-  - Supports inferred dynamic class styling (e.g. `.message.error` on `#message` toggled dynamically in JS).
-  - Flags unused CSS selectors (e.g. `.unused-banner`).
+## 6. Performance (`python backend/benchmark_performance.py`, this machine)
 
-### Stage 3: Multi-Language Analysis Service & CLI
-- **`AnalysisService`**:
-  - Coordinates multi-language execution in correct dependency order (HTML $\to$ Python & JS $\to$ CSS).
-  - Merges and deduplicates entities and relationships.
-  - Produces a unified `RepositoryAnalysis` object.
-- **`cli.py`**:
-  - Supports `python -m repomind.cli ingest <path>` (file inventory).
-  - Supports `python -m repomind.cli analyze <path>` (deep AST analysis with human-readable summary).
-  - Supports `--json` flag for machine-readable JSON output.
-- **Benchmark Evaluation**:
-  - Verified 100% against `test_apps/login_app/ground_truth.json` (all 34 entities and 34 relationships matched).
+| Repo | files | entities | analyse | graph | impact query | Q&A answer | peak mem |
+|---|---|---|---|---|---|---|---|
+| 50 modules | 71 | 321 | 0.25 s | 8 ms | 1.1 ms | 58 ms | 1.6 MB |
+| 200 modules | 281 | 1,281 | 0.87 s | 24 ms | 2.7 ms | 206 ms | 6.2 MB |
+| 800 modules | 1,121 | 5,121 | 3.6 s | 162 ms | 11.8 ms | 878 ms | 24.8 MB |
 
----
+Analysis scales roughly linearly (4x size gives about 4.2x time). Ingestion on Windows is dominated by the OS scanning freshly written files (cold 5.9 s vs warm 0.67 s for 1,121 files), so the benchmark reports both. Memory is Python heap only (tracemalloc). Not measured: repositories above ~1,000 files, concurrent users.
 
-## 4. Commands & How to Run
+## 7. Commands
 
-Always use the virtual environment Python in `.venv`:
+    $env:PYTHONPATH="backend"                       # PowerShell     (cmd: set PYTHONPATH=backend)
+    python -m pytest -c backend/pytest.ini backend/tests
+    python backend/evaluate_ground_truth.py [app]   # exit 1 on regression
+    python backend/benchmark_performance.py [sizes]
+    python -m repomind.cli analyze|ingest <path|url|.zip> [--json] [--exclude PATTERN]
+    python -m repomind.cli graph  <path> [--format json|graphml] [-o FILE]
+    python -m repomind.cli trace  <path> --source A --target B
+    python -m repomind.cli impact <path> (--target X | --since GIT_REF | --diff-file FILE) [--json]
+    python -m repomind.cli ask    <path> "question" [--provider template|anthropic]
+    python -m repomind.cli serve [--port 8000]      # UI at /, API docs at /docs
 
-### Run Full Test Suite
-```powershell
-& ".\.venv\Scripts\python.exe" -m pytest -c backend/pytest.ini backend/tests
-```
+Environment: `REPOMIND_WORKSPACE`, `REPOMIND_LOG_LEVEL`, `REPOMIND_IGNORE`, `REPOMIND_MAX_FILES`, `REPOMIND_MAX_FILE_BYTES`, `REPOMIND_MAX_ZIP_MB`, `REPOMIND_ALLOW_LOCAL_PATHS` (set `0` on any shared server), `REPOMIND_LLM_PROVIDER`, `REPOMIND_LLM_MODEL`, `REPOMIND_EMBEDDER`, `ANTHROPIC_API_KEY`.
 
-### Run Repository Ingestion (CLI)
-```powershell
-$env:PYTHONPATH="backend"; & ".\.venv\Scripts\python.exe" -m repomind.cli ingest test_apps/login_app
-```
+## 8. Known limitations (say these honestly in the viva)
 
-### Run Deep Multi-Language Analysis (CLI)
-```powershell
-$env:PYTHONPATH="backend"; & ".\.venv\Scripts\python.exe" -m repomind.cli analyze test_apps/login_app
-```
+* **Two benchmark apps are still a small sample.** Real-world accuracy on large unfamiliar repositories is unmeasured.
+* Python: no scope-aware flow analysis, no dynamic dispatch, no `**kwargs`/decorator magic, no inheritance across files for `self.x()` beyond a weak heuristic.
+* JavaScript: calls inside anonymous event handlers are attributed to the file, not to a named function. DOM lookups through your own helper (`$("#x")`) are not followed. No framework awareness, no TypeScript.
+* CSS: combinators, attribute selectors and pseudo-classes are unsupported (reported as no match, never guessed). Elements created at runtime cannot be matched.
+* Q&A intent detection is rule-based (regex); entity linking is token overlap plus TF-IDF. Vague or unusual phrasing can give a weak answer (it is labelled as a similarity match, or refused).
+* `AnthropicProvider` and `SentenceTransformerEmbedder` were not executed (no key / no model download); only the offline path is tested.
+* Impact "confidence" is the product along one shortest chain, not a probability. Data dependencies are not tracked.
+* The API keeps sessions in memory (analyses persist as JSON); it is single-process and has no authentication. Do not expose it publicly.
+* The UI is a single static page, not a React/Next.js application.
 
-### Run Analysis with JSON Output
-```powershell
-$env:PYTHONPATH="backend"; & ".\.venv\Scripts\python.exe" -m repomind.cli analyze test_apps/login_app --json
-```
+## 9. Not implemented (Phase 9)
 
----
-
-## 5. Remaining Roadmap & Detailed Implementation Specifications
-
-The remaining work is divided into 4 coherent stages (Stages 4 through 7).
-
-```
-[Stages 0–3: DONE (60%)] ➔ [Stage 4: Graph (15%)] ➔ [Stage 5: Impact (10%)] ➔ [Stage 6: API & UI (10%)] ➔ [Stage 7: RAG (5%)]
-```
-
----
-
-### STAGE 4: Repository Knowledge Graph (`backend/repomind/graph/`)
-
-**Goal**: Load the `RepositoryAnalysis` into an in-memory graph using `networkx.MultiDiGraph`, enabling graph traversal and path queries.
-
-#### Files to Create:
-1. `backend/repomind/graph/__init__.py`
-2. `backend/repomind/graph/repository_graph.py`
-3. `backend/tests/test_graph.py`
-
-#### Key Class: `RepositoryGraph`
-```python
-import networkx as nx
-from repomind.models import RepositoryAnalysis, Entity, Relationship
-
-class RepositoryGraph:
-    def __init__(self):
-        self.g = nx.MultiDiGraph()
-        self.entity_lookup: dict[str, Entity] = {}
-
-    @classmethod
-    def from_analysis(cls, analysis: RepositoryAnalysis) -> "RepositoryGraph":
-        # 1. Add all analysis.entities as nodes:
-        #    node_id = entity.id
-        #    attributes = { "type": entity.type.value, "name": entity.name, "language": entity.language.value, "location": entity.location, ... }
-        # 2. Add all analysis.relationships as directed edges:
-        #    u = rel.source_id, v = rel.target_id
-        #    key = rel.type.value
-        #    attributes = { "type": rel.type.value, "kind": rel.kind.value, "confidence": rel.confidence, "evidence": rel.evidence }
-        pass
-
-    def get_node(self, node_id: str) -> dict | None: ...
-    def get_successors(self, node_id: str) -> list[str]: ...   # outgoing
-    def get_predecessors(self, node_id: str) -> list[str]: ...  # incoming
-
-    def find_paths(self, source_id: str, target_id: str, max_depth: int = 10) -> list[list[str]]:
-        """Return all simple execution paths from source component to target component."""
-        return list(nx.all_simple_paths(self.g, source=source_id, target=target_id, cutoff=max_depth))
-
-    def get_subgraph(self, node_ids: set[str]) -> dict:
-        """Export subgraph as { 'nodes': [...], 'edges': [...] } for UI visualizers (Cytoscape/D3)."""
-        pass
-```
-
-#### Acceptance Criteria for Stage 4:
-- `test_graph.py` tests node and edge insertion from `login_app` analysis.
-- `find_paths("html:static/index.html:#login-form", "python:repositories/user_repository.py:UserRepository.find_by_username")` returns the complete 5-hop path:
-  `#login-form` $\to$ `handleLogin` $\to$ `api:POST:/api/login` $\to$ `login` $\to$ `AuthService.authenticate` $\to$ `UserRepository.find_by_username`.
-
----
-
-### STAGE 5: Code Flow Tracing & Change-Impact / Blast-Radius Analysis
-
-**Goal**: Determine the ripple effect of changing any component in the repository.
-
-#### Files to Create:
-1. `backend/repomind/services/impact_service.py`
-2. `backend/repomind/models/impact.py` (`ImpactReport`, `ImpactedComponent`)
-3. `backend/tests/test_impact.py`
-
-#### The Concept: Blast Radius
-If a developer changes `UserRepository.find_by_username`:
-- What calls this directly? (`AuthService.authenticate`)
-- What calls `AuthService.authenticate`? (`app.py:login`)
-- What API endpoint does `login` handle? (`api:POST:/api/login`)
-- What JavaScript function requests this endpoint? (`handleLogin`)
-- What HTML element triggers `handleLogin`? (`#login-form`)
-- **Result**: Modifying the database repository method impacts the login form UI!
-
-#### Implementation Logic:
-```python
-class ImpactService:
-    def __init__(self, graph: RepositoryGraph):
-        self.graph = graph
-
-    def analyze_impact(self, target_entity_id: str, max_depth: int = 10) -> ImpactReport:
-        # Traverse reverse edges (predecessors) using BFS or DFS
-        # Classify impact level based on distance:
-        # Depth 1: Direct Impact
-        # Depth 2+: Transitive / Indirect Impact
-        # Group by language and component type
-        pass
-```
-
-#### CLI Extension:
-Add impact command:
-```powershell
-python -m repomind.cli impact test_apps/login_app --target "python:repositories/user_repository.py:UserRepository.find_by_username"
-```
-
----
-
-### STAGE 6: FastAPI REST API & Web Dashboard
-
-**Goal**: Provide a clean HTTP interface and an interactive visual browser dashboard for viva demonstrations.
-
-#### Files to Create:
-1. `backend/repomind/api/app.py`
-2. `backend/repomind/api/routes.py`
-3. `backend/repomind/api/static/index.html` (interactive graph viewer using Cytoscape.js or Vis.js via CDN)
-4. `backend/tests/test_api.py`
-
-#### API Endpoints:
-- `POST /api/analyze?location=...`: Runs analysis and returns repository summary.
-- `GET /api/graph`: Returns graph nodes & edges in JSON format.
-- `GET /api/trace?source=...&target=...`: Returns paths connecting two components.
-- `GET /api/impact?entity_id=...`: Returns change-impact report for a selected component.
-
-#### Running the Server:
-```powershell
-& ".\.venv\Scripts\uvicorn.exe" repomind.api.app:app --reload --port 8000
-```
-
----
-
-### STAGE 7: Graph-Augmented RAG / Repository Q&A
-
-**Goal**: Combine the factual knowledge graph with an LLM prompt to answer repository architectural questions without hallucinations.
-
-#### The Problem with Naive RAG:
-A normal RAG agent retrieves isolated text snippets and guesses how they connect. It frequently hallucinates frontend-backend connections.
-
-#### The RepoMind Approach:
-1. User asks: *"How does the user login flow work in this codebase?"*
-2. RepoMind queries `RepositoryGraph.find_paths("html:static/index.html:#login-form", "python:repositories/user_repository.py:UserRepository.find_by_username")`.
-3. RepoMind formats the exact path and file:line evidence snippets into an LLM prompt.
-4. The LLM generates a clear, 100% verified explanation citing exact lines of code.
-
----
-
-## 6. Important Guidelines for the Next AI / Developer
-
-1. **Preserve Existing Implementations**: Do not rewrite or modify Stages 0–3 unnecessarily. They are fully working and tested.
-2. **Always Run Tests**: Before and after introducing changes, run:
-   ```powershell
-   & ".\.venv\Scripts\python.exe" -m pytest -c backend/pytest.ini backend/tests
-   ```
-3. **Keep Code Simple & Explainable**: This is a BTech Capstone project. Readable, modular, and defensible code is vastly superior to over-engineered abstractions.
-4. **Follow the Ground Truth Convention**: Whenever validating features, test against `test_apps/login_app/` and its `ground_truth.json`.
+Agent-based exploration, automated code suggestions and fixes with approval, additional languages (TypeScript, Java, ...). Extension points: `BaseAnalyzer` (new language), `LLMProvider`, `Embedder`, `RepositoryGraph`/`AnalysisStore` (Neo4j or a database).

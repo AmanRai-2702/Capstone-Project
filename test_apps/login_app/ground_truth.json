@@ -1,88 +1,538 @@
 {
-  "app": "login_app",
-  "entities": [
-    ["file:static/index.html", "file"],
-    ["file:static/login.js", "file"],
-    ["file:static/style.css", "file"],
-
-    ["python:app.py:LoginRequest", "class"],
-    ["python:app.py:index", "function"],
-    ["python:app.py:login", "function"],
-    ["python:app.py:get_user", "function"],
-    ["python:services/auth_service.py:AuthService", "class"],
-    ["python:services/auth_service.py:AuthService.__init__", "method"],
-    ["python:services/auth_service.py:AuthService.authenticate", "method"],
-    ["python:services/auth_service.py:AuthService.get_user", "method"],
-    ["python:repositories/user_repository.py:UserRepository", "class"],
-    ["python:repositories/user_repository.py:UserRepository.find_by_username", "method"],
-    ["python:repositories/user_repository.py:UserRepository.find_by_id", "method"],
-
-    ["api:GET:/", "api_endpoint"],
-    ["api:POST:/api/login", "api_endpoint"],
-    ["api:GET:/api/users/{user_id}", "api_endpoint"],
-
-    ["javascript:static/login.js:showMessage", "function"],
-    ["javascript:static/login.js:handleLogin", "function"],
-    ["javascript:static/login.js:loadProfile", "function"],
-
-    ["html:static/index.html:#login-card", "html_element"],
-    ["html:static/index.html:#login-form", "html_element"],
-    ["html:static/index.html:#username", "html_element"],
-    ["html:static/index.html:#password", "html_element"],
-    ["html:static/index.html:#login-btn", "html_element"],
-    ["html:static/index.html:#message", "html_element"],
-    ["html:static/index.html:#profile-btn", "html_element"],
-
-    ["css:static/style.css:.login-card", "css_selector"],
-    ["css:static/style.css:.field", "css_selector"],
-    ["css:static/style.css:.btn", "css_selector"],
-    ["css:static/style.css:.btn.primary", "css_selector"],
-    ["css:static/style.css:.message", "css_selector"],
-    ["css:static/style.css:.message.error", "css_selector"],
-    ["css:static/style.css:.unused-banner", "css_selector"]
+ "app": "login_app",
+ "entities": [
+  [
+   "file:static/index.html",
+   "file"
   ],
-  "relationships": [
-    ["file:static/index.html", "REFERENCES", "file:static/login.js", "detected"],
-    ["file:static/index.html", "REFERENCES", "file:static/style.css", "detected"],
-
-    ["html:static/index.html:#login-card", "CONTAINS", "html:static/index.html:#login-form", "detected"],
-    ["html:static/index.html:#login-card", "CONTAINS", "html:static/index.html:#message", "detected"],
-    ["html:static/index.html:#login-card", "CONTAINS", "html:static/index.html:#profile-btn", "detected"],
-    ["html:static/index.html:#login-form", "CONTAINS", "html:static/index.html:#username", "detected"],
-    ["html:static/index.html:#login-form", "CONTAINS", "html:static/index.html:#password", "detected"],
-    ["html:static/index.html:#login-form", "CONTAINS", "html:static/index.html:#login-btn", "detected"],
-
-    ["html:static/index.html:#login-form", "TRIGGERS", "javascript:static/login.js:handleLogin", "detected"],
-    ["html:static/index.html:#profile-btn", "TRIGGERS", "javascript:static/login.js:loadProfile", "inferred"],
-
-    ["file:static/login.js", "REFERENCES", "html:static/index.html:#login-form", "detected"],
-    ["file:static/login.js", "REFERENCES", "html:static/index.html:#message", "detected"],
-    ["file:static/login.js", "REFERENCES", "html:static/index.html:#profile-btn", "detected"],
-    ["javascript:static/login.js:handleLogin", "REFERENCES", "html:static/index.html:#username", "detected"],
-    ["javascript:static/login.js:handleLogin", "REFERENCES", "html:static/index.html:#password", "detected"],
-
-    ["javascript:static/login.js:handleLogin", "CALLS", "javascript:static/login.js:showMessage", "detected"],
-    ["javascript:static/login.js:loadProfile", "CALLS", "javascript:static/login.js:showMessage", "detected"],
-
-    ["javascript:static/login.js:handleLogin", "REQUESTS", "api:POST:/api/login", "detected"],
-    ["javascript:static/login.js:loadProfile", "REQUESTS", "api:GET:/api/users/{user_id}", "inferred"],
-
-    ["python:app.py:index", "HANDLES", "api:GET:/", "detected"],
-    ["python:app.py:login", "HANDLES", "api:POST:/api/login", "detected"],
-    ["python:app.py:get_user", "HANDLES", "api:GET:/api/users/{user_id}", "detected"],
-
-    ["python:app.py:login", "CALLS", "python:services/auth_service.py:AuthService.authenticate", "inferred"],
-    ["python:app.py:get_user", "CALLS", "python:services/auth_service.py:AuthService.get_user", "inferred"],
-    ["python:services/auth_service.py:AuthService.authenticate", "CALLS", "python:repositories/user_repository.py:UserRepository.find_by_username", "inferred"],
-    ["python:services/auth_service.py:AuthService.get_user", "CALLS", "python:repositories/user_repository.py:UserRepository.find_by_id", "inferred"],
-
-    ["css:static/style.css:.login-card", "STYLES", "html:static/index.html:#login-card", "detected"],
-    ["css:static/style.css:.field", "STYLES", "html:static/index.html:#username", "detected"],
-    ["css:static/style.css:.field", "STYLES", "html:static/index.html:#password", "detected"],
-    ["css:static/style.css:.btn", "STYLES", "html:static/index.html:#login-btn", "detected"],
-    ["css:static/style.css:.btn", "STYLES", "html:static/index.html:#profile-btn", "detected"],
-    ["css:static/style.css:.btn.primary", "STYLES", "html:static/index.html:#login-btn", "detected"],
-    ["css:static/style.css:.message", "STYLES", "html:static/index.html:#message", "detected"],
-    ["css:static/style.css:.message.error", "STYLES", "html:static/index.html:#message", "inferred"]
+  [
+   "file:static/login.js",
+   "file"
+  ],
+  [
+   "file:static/style.css",
+   "file"
+  ],
+  [
+   "python:app.py:LoginRequest",
+   "class"
+  ],
+  [
+   "python:app.py:index",
+   "function"
+  ],
+  [
+   "python:app.py:login",
+   "function"
+  ],
+  [
+   "python:app.py:get_user",
+   "function"
+  ],
+  [
+   "python:services/auth_service.py:AuthService",
+   "class"
+  ],
+  [
+   "python:services/auth_service.py:AuthService.__init__",
+   "method"
+  ],
+  [
+   "python:services/auth_service.py:AuthService.authenticate",
+   "method"
+  ],
+  [
+   "python:services/auth_service.py:AuthService.get_user",
+   "method"
+  ],
+  [
+   "python:repositories/user_repository.py:UserRepository",
+   "class"
+  ],
+  [
+   "python:repositories/user_repository.py:UserRepository.find_by_username",
+   "method"
+  ],
+  [
+   "python:repositories/user_repository.py:UserRepository.find_by_id",
+   "method"
+  ],
+  [
+   "api:GET:/",
+   "api_endpoint"
+  ],
+  [
+   "api:POST:/api/login",
+   "api_endpoint"
+  ],
+  [
+   "api:GET:/api/users/{user_id}",
+   "api_endpoint"
+  ],
+  [
+   "javascript:static/login.js:showMessage",
+   "function"
+  ],
+  [
+   "javascript:static/login.js:handleLogin",
+   "function"
+  ],
+  [
+   "javascript:static/login.js:loadProfile",
+   "function"
+  ],
+  [
+   "html:static/index.html:#login-card",
+   "html_element"
+  ],
+  [
+   "html:static/index.html:#login-form",
+   "html_element"
+  ],
+  [
+   "html:static/index.html:#username",
+   "html_element"
+  ],
+  [
+   "html:static/index.html:#password",
+   "html_element"
+  ],
+  [
+   "html:static/index.html:#login-btn",
+   "html_element"
+  ],
+  [
+   "html:static/index.html:#message",
+   "html_element"
+  ],
+  [
+   "html:static/index.html:#profile-btn",
+   "html_element"
+  ],
+  [
+   "css:static/style.css:.login-card",
+   "css_selector"
+  ],
+  [
+   "css:static/style.css:.field",
+   "css_selector"
+  ],
+  [
+   "css:static/style.css:.btn",
+   "css_selector"
+  ],
+  [
+   "css:static/style.css:.btn.primary",
+   "css_selector"
+  ],
+  [
+   "css:static/style.css:.message",
+   "css_selector"
+  ],
+  [
+   "css:static/style.css:.message.error",
+   "css_selector"
+  ],
+  [
+   "css:static/style.css:.unused-banner",
+   "css_selector"
+  ],
+  [
+   "file:app.py",
+   "file"
+  ],
+  [
+   "file:ground_truth.json",
+   "file"
+  ],
+  [
+   "file:repositories/user_repository.py",
+   "file"
+  ],
+  [
+   "file:requirements.txt",
+   "file"
+  ],
+  [
+   "file:services/auth_service.py",
+   "file"
   ]
+ ],
+ "relationships": [
+  [
+   "file:static/index.html",
+   "REFERENCES",
+   "file:static/login.js",
+   "detected"
+  ],
+  [
+   "file:static/index.html",
+   "REFERENCES",
+   "file:static/style.css",
+   "detected"
+  ],
+  [
+   "html:static/index.html:#login-card",
+   "CONTAINS",
+   "html:static/index.html:#login-form",
+   "detected"
+  ],
+  [
+   "html:static/index.html:#login-card",
+   "CONTAINS",
+   "html:static/index.html:#message",
+   "detected"
+  ],
+  [
+   "html:static/index.html:#login-card",
+   "CONTAINS",
+   "html:static/index.html:#profile-btn",
+   "detected"
+  ],
+  [
+   "html:static/index.html:#login-form",
+   "CONTAINS",
+   "html:static/index.html:#username",
+   "detected"
+  ],
+  [
+   "html:static/index.html:#login-form",
+   "CONTAINS",
+   "html:static/index.html:#password",
+   "detected"
+  ],
+  [
+   "html:static/index.html:#login-form",
+   "CONTAINS",
+   "html:static/index.html:#login-btn",
+   "detected"
+  ],
+  [
+   "html:static/index.html:#login-form",
+   "TRIGGERS",
+   "javascript:static/login.js:handleLogin",
+   "detected"
+  ],
+  [
+   "html:static/index.html:#profile-btn",
+   "TRIGGERS",
+   "javascript:static/login.js:loadProfile",
+   "inferred"
+  ],
+  [
+   "file:static/login.js",
+   "REFERENCES",
+   "html:static/index.html:#login-form",
+   "detected"
+  ],
+  [
+   "file:static/login.js",
+   "REFERENCES",
+   "html:static/index.html:#message",
+   "detected"
+  ],
+  [
+   "file:static/login.js",
+   "REFERENCES",
+   "html:static/index.html:#profile-btn",
+   "detected"
+  ],
+  [
+   "javascript:static/login.js:handleLogin",
+   "REFERENCES",
+   "html:static/index.html:#username",
+   "detected"
+  ],
+  [
+   "javascript:static/login.js:handleLogin",
+   "REFERENCES",
+   "html:static/index.html:#password",
+   "detected"
+  ],
+  [
+   "javascript:static/login.js:handleLogin",
+   "CALLS",
+   "javascript:static/login.js:showMessage",
+   "detected"
+  ],
+  [
+   "javascript:static/login.js:loadProfile",
+   "CALLS",
+   "javascript:static/login.js:showMessage",
+   "detected"
+  ],
+  [
+   "javascript:static/login.js:handleLogin",
+   "REQUESTS",
+   "api:POST:/api/login",
+   "detected"
+  ],
+  [
+   "javascript:static/login.js:loadProfile",
+   "REQUESTS",
+   "api:GET:/api/users/{user_id}",
+   "inferred"
+  ],
+  [
+   "python:app.py:index",
+   "HANDLES",
+   "api:GET:/",
+   "detected"
+  ],
+  [
+   "python:app.py:login",
+   "HANDLES",
+   "api:POST:/api/login",
+   "detected"
+  ],
+  [
+   "python:app.py:get_user",
+   "HANDLES",
+   "api:GET:/api/users/{user_id}",
+   "detected"
+  ],
+  [
+   "python:app.py:login",
+   "CALLS",
+   "python:services/auth_service.py:AuthService.authenticate",
+   "inferred"
+  ],
+  [
+   "python:app.py:get_user",
+   "CALLS",
+   "python:services/auth_service.py:AuthService.get_user",
+   "inferred"
+  ],
+  [
+   "python:services/auth_service.py:AuthService.authenticate",
+   "CALLS",
+   "python:repositories/user_repository.py:UserRepository.find_by_username",
+   "inferred"
+  ],
+  [
+   "python:services/auth_service.py:AuthService.get_user",
+   "CALLS",
+   "python:repositories/user_repository.py:UserRepository.find_by_id",
+   "inferred"
+  ],
+  [
+   "css:static/style.css:.login-card",
+   "STYLES",
+   "html:static/index.html:#login-card",
+   "detected"
+  ],
+  [
+   "css:static/style.css:.field",
+   "STYLES",
+   "html:static/index.html:#username",
+   "detected"
+  ],
+  [
+   "css:static/style.css:.field",
+   "STYLES",
+   "html:static/index.html:#password",
+   "detected"
+  ],
+  [
+   "css:static/style.css:.btn",
+   "STYLES",
+   "html:static/index.html:#login-btn",
+   "detected"
+  ],
+  [
+   "css:static/style.css:.btn",
+   "STYLES",
+   "html:static/index.html:#profile-btn",
+   "detected"
+  ],
+  [
+   "css:static/style.css:.btn.primary",
+   "STYLES",
+   "html:static/index.html:#login-btn",
+   "detected"
+  ],
+  [
+   "css:static/style.css:.message",
+   "STYLES",
+   "html:static/index.html:#message",
+   "detected"
+  ],
+  [
+   "css:static/style.css:.message.error",
+   "STYLES",
+   "html:static/index.html:#message",
+   "inferred"
+  ],
+  [
+   "file:app.py",
+   "CONTAINS",
+   "python:app.py:LoginRequest",
+   "detected"
+  ],
+  [
+   "file:app.py",
+   "CONTAINS",
+   "python:app.py:get_user",
+   "detected"
+  ],
+  [
+   "file:app.py",
+   "CONTAINS",
+   "python:app.py:index",
+   "detected"
+  ],
+  [
+   "file:app.py",
+   "CONTAINS",
+   "python:app.py:login",
+   "detected"
+  ],
+  [
+   "file:app.py",
+   "IMPORTS",
+   "file:services/auth_service.py",
+   "detected"
+  ],
+  [
+   "file:repositories/user_repository.py",
+   "CONTAINS",
+   "python:repositories/user_repository.py:UserRepository",
+   "detected"
+  ],
+  [
+   "file:services/auth_service.py",
+   "CONTAINS",
+   "python:services/auth_service.py:AuthService",
+   "detected"
+  ],
+  [
+   "file:services/auth_service.py",
+   "IMPORTS",
+   "file:repositories/user_repository.py",
+   "detected"
+  ],
+  [
+   "file:static/login.js",
+   "CALLS",
+   "javascript:static/login.js:loadProfile",
+   "detected"
+  ],
+  [
+   "file:static/login.js",
+   "CONTAINS",
+   "javascript:static/login.js:handleLogin",
+   "detected"
+  ],
+  [
+   "file:static/login.js",
+   "CONTAINS",
+   "javascript:static/login.js:loadProfile",
+   "detected"
+  ],
+  [
+   "file:static/login.js",
+   "CONTAINS",
+   "javascript:static/login.js:showMessage",
+   "detected"
+  ],
+  [
+   "file:static/style.css",
+   "CONTAINS",
+   "css:static/style.css:.btn",
+   "detected"
+  ],
+  [
+   "file:static/style.css",
+   "CONTAINS",
+   "css:static/style.css:.btn.primary",
+   "detected"
+  ],
+  [
+   "file:static/style.css",
+   "CONTAINS",
+   "css:static/style.css:.field",
+   "detected"
+  ],
+  [
+   "file:static/style.css",
+   "CONTAINS",
+   "css:static/style.css:.login-card",
+   "detected"
+  ],
+  [
+   "file:static/style.css",
+   "CONTAINS",
+   "css:static/style.css:.message",
+   "detected"
+  ],
+  [
+   "file:static/style.css",
+   "CONTAINS",
+   "css:static/style.css:.message.error",
+   "detected"
+  ],
+  [
+   "file:static/style.css",
+   "CONTAINS",
+   "css:static/style.css:.unused-banner",
+   "detected"
+  ],
+  [
+   "python:repositories/user_repository.py:UserRepository",
+   "CONTAINS",
+   "python:repositories/user_repository.py:UserRepository.find_by_id",
+   "detected"
+  ],
+  [
+   "python:repositories/user_repository.py:UserRepository",
+   "CONTAINS",
+   "python:repositories/user_repository.py:UserRepository.find_by_username",
+   "detected"
+  ],
+  [
+   "python:services/auth_service.py:AuthService",
+   "CONTAINS",
+   "python:services/auth_service.py:AuthService.__init__",
+   "detected"
+  ],
+  [
+   "python:services/auth_service.py:AuthService",
+   "CONTAINS",
+   "python:services/auth_service.py:AuthService.authenticate",
+   "detected"
+  ],
+  [
+   "python:services/auth_service.py:AuthService",
+   "CONTAINS",
+   "python:services/auth_service.py:AuthService.get_user",
+   "detected"
+  ],
+  [
+   "python:services/auth_service.py:AuthService.__init__",
+   "CALLS",
+   "python:repositories/user_repository.py:UserRepository",
+   "inferred"
+  ],
+  [
+   "python:app.py:login",
+   "USES",
+   "python:app.py:LoginRequest",
+   "detected"
+  ]
+ ],
+ "forbidden_relationships": [
+  [
+   "file:static/login.js",
+   "REFERENCES",
+   "html:static/index.html:#click",
+   "detected"
+  ],
+  [
+   "css:static/style.css:.btn.primary",
+   "STYLES",
+   "html:static/index.html:#profile-btn",
+   "inferred"
+  ]
+ ],
+ "notes": "Entities/relationships were written by reading the source. forbidden_relationships are known false positives that must never reappear."
 }

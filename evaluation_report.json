@@ -1,267 +1,428 @@
 {
-  "repository": "login_app",
-  "entities": {
-    "expected": 34,
-    "actual": 39,
-    "correct": 34,
-    "precision": 0.8717948717948718,
-    "recall": 1.0,
-    "f1": 0.9315068493150686
+  "login_app": {
+    "entities": {
+      "expected": 39,
+      "actual": 39,
+      "correct": 39,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "relationships": {
+      "expected": 60,
+      "actual": 60,
+      "correct": 60,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "relationships_by_type": {
+      "CALLS": {
+        "expected": 8,
+        "actual": 8,
+        "correct": 8,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "CONTAINS": {
+        "expected": 27,
+        "actual": 27,
+        "correct": 27,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "HANDLES": {
+        "expected": 3,
+        "actual": 3,
+        "correct": 3,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "IMPORTS": {
+        "expected": 2,
+        "actual": 2,
+        "correct": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "REFERENCES": {
+        "expected": 7,
+        "actual": 7,
+        "correct": 7,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "REQUESTS": {
+        "expected": 2,
+        "actual": 2,
+        "correct": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "STYLES": {
+        "expected": 8,
+        "actual": 8,
+        "correct": 8,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "TRIGGERS": {
+        "expected": 2,
+        "actual": 2,
+        "correct": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "USES": {
+        "expected": 1,
+        "actual": 1,
+        "correct": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    "relationships_by_kind": {
+      "detected": {
+        "expected": 52,
+        "actual": 52,
+        "correct": 52,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "inferred": {
+        "expected": 8,
+        "actual": 8,
+        "correct": 8,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "heuristic": {
+        "expected": 0,
+        "actual": 0,
+        "correct": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    "dangling_edges": [],
+    "forbidden_edges_present": [],
+    "unresolved": [
+      {
+        "source_id": "file:app.py",
+        "target_id": "file:fastapi.py",
+        "type": "IMPORTS",
+        "reason": "external_package",
+        "detail": "fastapi",
+        "snippet": "from fastapi import FastAPI, HTTPException",
+        "location": {
+          "file_path": "app.py",
+          "start_line": 1,
+          "end_line": 1
+        }
+      },
+      {
+        "source_id": "file:app.py",
+        "target_id": "file:fastapi/responses.py",
+        "type": "IMPORTS",
+        "reason": "external_package",
+        "detail": "fastapi.responses",
+        "snippet": "from fastapi.responses import FileResponse",
+        "location": {
+          "file_path": "app.py",
+          "start_line": 2,
+          "end_line": 2
+        }
+      },
+      {
+        "source_id": "file:app.py",
+        "target_id": "file:fastapi/staticfiles.py",
+        "type": "IMPORTS",
+        "reason": "external_package",
+        "detail": "fastapi.staticfiles",
+        "snippet": "from fastapi.staticfiles import StaticFiles",
+        "location": {
+          "file_path": "app.py",
+          "start_line": 3,
+          "end_line": 3
+        }
+      },
+      {
+        "source_id": "file:app.py",
+        "target_id": "file:pydantic.py",
+        "type": "IMPORTS",
+        "reason": "external_package",
+        "detail": "pydantic",
+        "snippet": "from pydantic import BaseModel",
+        "location": {
+          "file_path": "app.py",
+          "start_line": 4,
+          "end_line": 4
+        }
+      },
+      {
+        "source_id": "python:app.py:LoginRequest",
+        "target_id": "python:pydantic.py:BaseModel",
+        "type": "INHERITS",
+        "reason": "external_package",
+        "detail": "pydantic",
+        "snippet": "class LoginRequest(BaseModel):",
+        "location": {
+          "file_path": "app.py",
+          "start_line": 12,
+          "end_line": 12
+        }
+      },
+      {
+        "source_id": "python:app.py:index",
+        "target_id": "python:fastapi/responses.py:FileResponse",
+        "type": "CALLS",
+        "reason": "external_package",
+        "detail": "fastapi.responses",
+        "snippet": "return FileResponse(\"static/index.html\")",
+        "location": {
+          "file_path": "app.py",
+          "start_line": 19,
+          "end_line": 19
+        }
+      },
+      {
+        "source_id": "python:app.py:login",
+        "target_id": "python:fastapi.py:HTTPException",
+        "type": "CALLS",
+        "reason": "external_package",
+        "detail": "fastapi",
+        "snippet": "raise HTTPException(status_code=401, detail=\"Invalid credentials\")",
+        "location": {
+          "file_path": "app.py",
+          "start_line": 26,
+          "end_line": 26
+        }
+      },
+      {
+        "source_id": "python:app.py:get_user",
+        "target_id": "python:fastapi.py:HTTPException",
+        "type": "CALLS",
+        "reason": "external_package",
+        "detail": "fastapi",
+        "snippet": "raise HTTPException(status_code=404, detail=\"User not found\")",
+        "location": {
+          "file_path": "app.py",
+          "start_line": 34,
+          "end_line": 34
+        }
+      }
+    ],
+    "missing_entities": [],
+    "extra_entities": [],
+    "missing_relationships": [],
+    "extra_relationships": []
   },
-  "relationships": {
-    "expected": 34,
-    "actual": 71,
-    "correct": 34,
-    "precision": 0.4788732394366197,
-    "recall": 1.0,
-    "f1": 0.6476190476190475
+  "notes_app": {
+    "entities": {
+      "expected": 52,
+      "actual": 52,
+      "correct": 52,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "relationships": {
+      "expected": 83,
+      "actual": 83,
+      "correct": 83,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "relationships_by_type": {
+      "CALLS": {
+        "expected": 17,
+        "actual": 17,
+        "correct": 17,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "CONTAINS": {
+        "expected": 36,
+        "actual": 36,
+        "correct": 36,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "HANDLES": {
+        "expected": 4,
+        "actual": 4,
+        "correct": 4,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "IMPORTS": {
+        "expected": 3,
+        "actual": 3,
+        "correct": 3,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "INHERITS": {
+        "expected": 1,
+        "actual": 1,
+        "correct": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "REFERENCES": {
+        "expected": 10,
+        "actual": 10,
+        "correct": 10,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "REQUESTS": {
+        "expected": 4,
+        "actual": 4,
+        "correct": 4,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "STYLES": {
+        "expected": 7,
+        "actual": 7,
+        "correct": 7,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "TRIGGERS": {
+        "expected": 1,
+        "actual": 1,
+        "correct": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    "relationships_by_kind": {
+      "detected": {
+        "expected": 73,
+        "actual": 73,
+        "correct": 73,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "inferred": {
+        "expected": 10,
+        "actual": 10,
+        "correct": 10,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "heuristic": {
+        "expected": 0,
+        "actual": 0,
+        "correct": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    "dangling_edges": [],
+    "forbidden_edges_present": [],
+    "unresolved": [
+      {
+        "source_id": "file:app.py",
+        "target_id": "file:flask.py",
+        "type": "IMPORTS",
+        "reason": "external_package",
+        "detail": "flask",
+        "snippet": "from flask import Flask, jsonify, request",
+        "location": {
+          "file_path": "app.py",
+          "start_line": 1,
+          "end_line": 1
+        }
+      },
+      {
+        "source_id": "python:app.py:home",
+        "target_id": "python:flask.py:Flask.send_static_file",
+        "type": "CALLS",
+        "reason": "external_package",
+        "detail": "flask",
+        "snippet": "return app.send_static_file(\"index.html\")",
+        "location": {
+          "file_path": "app.py",
+          "start_line": 11,
+          "end_line": 11
+        }
+      },
+      {
+        "source_id": "python:app.py:list_notes",
+        "target_id": "python:flask.py:jsonify",
+        "type": "CALLS",
+        "reason": "external_package",
+        "detail": "flask",
+        "snippet": "return jsonify(service.all_notes())",
+        "location": {
+          "file_path": "app.py",
+          "start_line": 16,
+          "end_line": 16
+        }
+      },
+      {
+        "source_id": "python:app.py:create_note",
+        "target_id": "python:flask.py:jsonify",
+        "type": "CALLS",
+        "reason": "external_package",
+        "detail": "flask",
+        "snippet": "return jsonify(service.add(data[\"title\"]))",
+        "location": {
+          "file_path": "app.py",
+          "start_line": 22,
+          "end_line": 22
+        }
+      },
+      {
+        "source_id": "python:app.py:delete_note",
+        "target_id": "python:flask.py:jsonify",
+        "type": "CALLS",
+        "reason": "external_package",
+        "detail": "flask",
+        "snippet": "return jsonify({\"ok\": True})",
+        "location": {
+          "file_path": "app.py",
+          "start_line": 28,
+          "end_line": 28
+        }
+      }
+    ],
+    "missing_entities": [],
+    "extra_entities": [],
+    "missing_relationships": [],
+    "extra_relationships": []
   },
-  "missing_entities": [],
-  "extra_entities": [
-    [
-      "file:app.py",
-      "file"
-    ],
-    [
-      "file:ground_truth.json",
-      "file"
-    ],
-    [
-      "file:repositories/user_repository.py",
-      "file"
-    ],
-    [
-      "file:requirements.txt",
-      "file"
-    ],
-    [
-      "file:services/auth_service.py",
-      "file"
-    ]
-  ],
-  "missing_relationships": [],
-  "extra_relationships": [
-    [
-      "css:static/style.css:.btn.primary",
-      "STYLES",
-      "html:static/index.html:#profile-btn",
-      "inferred"
-    ],
-    [
-      "file:app.py",
-      "CONTAINS",
-      "python:app.py:LoginRequest",
-      "detected"
-    ],
-    [
-      "file:app.py",
-      "CONTAINS",
-      "python:app.py:get_user",
-      "detected"
-    ],
-    [
-      "file:app.py",
-      "CONTAINS",
-      "python:app.py:index",
-      "detected"
-    ],
-    [
-      "file:app.py",
-      "CONTAINS",
-      "python:app.py:login",
-      "detected"
-    ],
-    [
-      "file:app.py",
-      "IMPORTS",
-      "file:fastapi.py",
-      "detected"
-    ],
-    [
-      "file:app.py",
-      "IMPORTS",
-      "file:fastapi/responses.py",
-      "detected"
-    ],
-    [
-      "file:app.py",
-      "IMPORTS",
-      "file:fastapi/staticfiles.py",
-      "detected"
-    ],
-    [
-      "file:app.py",
-      "IMPORTS",
-      "file:pydantic.py",
-      "detected"
-    ],
-    [
-      "file:app.py",
-      "IMPORTS",
-      "file:services/auth_service.py",
-      "detected"
-    ],
-    [
-      "file:repositories/user_repository.py",
-      "CONTAINS",
-      "python:repositories/user_repository.py:UserRepository",
-      "detected"
-    ],
-    [
-      "file:services/auth_service.py",
-      "CONTAINS",
-      "python:services/auth_service.py:AuthService",
-      "detected"
-    ],
-    [
-      "file:services/auth_service.py",
-      "IMPORTS",
-      "file:repositories/user_repository.py",
-      "detected"
-    ],
-    [
-      "file:static/login.js",
-      "CALLS",
-      "javascript:static/login.js:loadProfile",
-      "detected"
-    ],
-    [
-      "file:static/login.js",
-      "CONTAINS",
-      "javascript:static/login.js:handleLogin",
-      "detected"
-    ],
-    [
-      "file:static/login.js",
-      "CONTAINS",
-      "javascript:static/login.js:loadProfile",
-      "detected"
-    ],
-    [
-      "file:static/login.js",
-      "CONTAINS",
-      "javascript:static/login.js:showMessage",
-      "detected"
-    ],
-    [
-      "file:static/login.js",
-      "REFERENCES",
-      "html:static/index.html:#click",
-      "detected"
-    ],
-    [
-      "file:static/style.css",
-      "CONTAINS",
-      "css:static/style.css:.btn",
-      "detected"
-    ],
-    [
-      "file:static/style.css",
-      "CONTAINS",
-      "css:static/style.css:.btn.primary",
-      "detected"
-    ],
-    [
-      "file:static/style.css",
-      "CONTAINS",
-      "css:static/style.css:.field",
-      "detected"
-    ],
-    [
-      "file:static/style.css",
-      "CONTAINS",
-      "css:static/style.css:.login-card",
-      "detected"
-    ],
-    [
-      "file:static/style.css",
-      "CONTAINS",
-      "css:static/style.css:.message",
-      "detected"
-    ],
-    [
-      "file:static/style.css",
-      "CONTAINS",
-      "css:static/style.css:.message.error",
-      "detected"
-    ],
-    [
-      "file:static/style.css",
-      "CONTAINS",
-      "css:static/style.css:.unused-banner",
-      "detected"
-    ],
-    [
-      "python:app.py:get_user",
-      "CALLS",
-      "python:fastapi.py:FastAPI.get",
-      "inferred"
-    ],
-    [
-      "python:app.py:get_user",
-      "CALLS",
-      "python:fastapi.py:HTTPException",
-      "inferred"
-    ],
-    [
-      "python:app.py:index",
-      "CALLS",
-      "python:fastapi.py:FastAPI.get",
-      "inferred"
-    ],
-    [
-      "python:app.py:index",
-      "CALLS",
-      "python:fastapi/responses.py:FileResponse",
-      "inferred"
-    ],
-    [
-      "python:app.py:login",
-      "CALLS",
-      "python:fastapi.py:FastAPI.post",
-      "inferred"
-    ],
-    [
-      "python:app.py:login",
-      "CALLS",
-      "python:fastapi.py:HTTPException",
-      "inferred"
-    ],
-    [
-      "python:repositories/user_repository.py:UserRepository",
-      "CONTAINS",
-      "python:repositories/user_repository.py:UserRepository.find_by_id",
-      "detected"
-    ],
-    [
-      "python:repositories/user_repository.py:UserRepository",
-      "CONTAINS",
-      "python:repositories/user_repository.py:UserRepository.find_by_username",
-      "detected"
-    ],
-    [
-      "python:services/auth_service.py:AuthService",
-      "CONTAINS",
-      "python:services/auth_service.py:AuthService.__init__",
-      "detected"
-    ],
-    [
-      "python:services/auth_service.py:AuthService",
-      "CONTAINS",
-      "python:services/auth_service.py:AuthService.authenticate",
-      "detected"
-    ],
-    [
-      "python:services/auth_service.py:AuthService",
-      "CONTAINS",
-      "python:services/auth_service.py:AuthService.get_user",
-      "detected"
-    ],
-    [
-      "python:services/auth_service.py:AuthService.__init__",
-      "CALLS",
-      "python:repositories/user_repository.py:UserRepository",
-      "inferred"
-    ]
-  ]
+  "_overall": {
+    "apps": 2,
+    "relationship_recall": 1.0,
+    "relationship_precision": 1.0
+  }
 }

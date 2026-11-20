@@ -36,12 +36,14 @@ class RelationType(StrEnum):
     HANDLES = "HANDLES"      # Python function -> API endpoint
     IMPLEMENTS = "IMPLEMENTS"
     DEPENDS_ON = "DEPENDS_ON"
+    INHERITS = "INHERITS"    # class -> base class
+    USES = "USES"            # function -> class/type it depends on (e.g. request model)
 
 
 class RelationKind(StrEnum):
     DETECTED = "detected"    # directly visible in code
-    INFERRED = "inferred"    # we're guessing from patterns
-    
+    INFERRED = "inferred"    # derived by static reasoning (e.g. local type tracking)
+    HEURISTIC = "heuristic"  # name/pattern matching with weak evidence
 
 
 class FileCategory(StrEnum):

@@ -1,4 +1,5 @@
 import logging
+import re
 from pathlib import PurePosixPath
 
 import tree_sitter
@@ -37,6 +38,7 @@ class CSSAnalyzer(BaseAnalyzer):
         rel_path: str,
         content: str,
         html_elements: list[Entity] | None = None,
+        dynamic_classes: dict[str, set[str]] | None = None,
     ) -> AnalysisResult:
         rel_path = rel_path.replace("\\", "/")
         source_bytes = content.encode("utf-8")
@@ -117,9 +119,13 @@ class CSSAnalyzer(BaseAnalyzer):
                         loc=loc,
                         snippet=snippet,
                         result=result,
+                        dynamic_classes=dynamic_classes,
                     )
 
         return result
+
+    # tag?, then any number of #id / .class parts:  button.btn  #toast.visible  .message.error
+    _COMPOUND = re.compile(r"^(?P<tag>[A-Za-z][\w-]*)?(?P<rest>(?:[#.][\w-]+)*)$")
 
     def _match_styles(
         self,
@@ -129,55 +135,47 @@ class CSSAnalyzer(BaseAnalyzer):
         loc: SourceLocation,
         snippet: str,
         result: AnalysisResult,
+        dynamic_classes: dict[str, set[str]] | None = None,
     ) -> None:
-        """Match CSS selector against known HTML element entities."""
+        """Match one CSS selector against known HTML element entities.
+
+        Supported: compound selectors of tag / #id / .class parts. Descendant/child combinators,
+        attribute selectors and pseudo-classes are NOT supported and produce no match (never a
+        guess). Match kinds:
+          detected - the element has every required tag/id/class
+          inferred - only classes are missing, and JS is seen adding all of them to that element
+        """
+        m = self._COMPOUND.match(selector.strip())
+        if not m or not (m["tag"] or m["rest"]):
+            return
+        tag = (m["tag"] or "").lower()
+        ids = re.findall(r"#([\w-]+)", m["rest"])
+        classes = set(re.findall(r"\.([\w-]+)", m["rest"]))
+        if len(set(ids)) > 1:
+            return
+
         for elem in html_elements:
             if elem.type != EntityType.HTML_ELEMENT:
                 continue
-
-            elem_id_attr = elem.metadata.get("id", "")
-            elem_classes = set(elem.metadata.get("classes", []))
-
-            # Case 1: ID selector, e.g. #login-card
-            if selector.startswith("#") and selector[1:] == elem_id_attr:
-                result.add_relationship(
-                    Relationship(
-                        source_id=selector_entity.id,
-                        target_id=elem.id,
-                        type=RelationType.STYLES,
-                        kind=RelationKind.DETECTED,
-                        confidence=1.0,
-                        evidence=[Evidence(snippet=snippet, location=loc)],
-                    )
+            elem_id = elem.metadata.get("id", "")
+            if tag and elem.metadata.get("tag", "").lower() != tag:
+                continue
+            if ids and ids[0] != elem_id:
+                continue
+            missing = classes - set(elem.metadata.get("classes", []))
+            if not missing:
+                kind, conf = RelationKind.DETECTED, 1.0
+            elif elem_id and missing <= (dynamic_classes or {}).get(elem_id, set()):
+                kind, conf = RelationKind.INFERRED, 0.85
+            else:
+                continue
+            result.add_relationship(
+                Relationship(
+                    source_id=selector_entity.id,
+                    target_id=elem.id,
+                    type=RelationType.STYLES,
+                    kind=kind,
+                    confidence=conf,
+                    evidence=[Evidence(snippet=snippet, location=loc)],
                 )
-
-            # Case 2: Class selector, e.g. .btn, .btn.primary, .field, .message.error
-            elif selector.startswith("."):
-                req_classes = set([c for c in selector.split(".") if c])
-
-                # Exact / Subset match (element has all required classes)
-                if req_classes and req_classes <= elem_classes:
-                    result.add_relationship(
-                        Relationship(
-                            source_id=selector_entity.id,
-                            target_id=elem.id,
-                            type=RelationType.STYLES,
-                            kind=RelationKind.DETECTED,
-                            confidence=1.0,
-                            evidence=[Evidence(snippet=snippet, location=loc)],
-                        )
-                    )
-
-                # Inferred match: compound selector where element has base class but lacks secondary
-                # (e.g. .message.error matching <p id="message" class="message"> toggled dynamically by JS)
-                elif len(req_classes) > 1 and len(req_classes & elem_classes) >= 1:
-                    result.add_relationship(
-                        Relationship(
-                            source_id=selector_entity.id,
-                            target_id=elem.id,
-                            type=RelationType.STYLES,
-                            kind=RelationKind.INFERRED,
-                            confidence=0.85,
-                            evidence=[Evidence(snippet=snippet, location=loc)],
-                        )
-                    )
+            )
