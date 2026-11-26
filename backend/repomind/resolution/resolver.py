@@ -83,6 +83,13 @@ class RelationshipResolver:
 
         def keep(rel: Relationship) -> None:
             prev = out.get(rel.key)
+            if prev is not None and rel.type == RelationType.IMPORTS and (prev.metadata.get("names") or rel.metadata.get("names")):
+                # two `from pkg import ...` lines reach the same file: remember the names of both
+                names = sorted(set(prev.metadata.get("names", [])) | set(rel.metadata.get("names", [])))
+                rel = rel.model_copy(update={"metadata": {**rel.metadata, "names": names}})
+                prev = prev.model_copy(update={"metadata": {**prev.metadata, "names": names}})
+                out[rel.key] = prev if prev.confidence >= rel.confidence else rel
+                return
             if prev is None or rel.confidence > prev.confidence:
                 out[rel.key] = rel
 
@@ -106,7 +113,25 @@ class RelationshipResolver:
             elif not any(u.source_id == rel.source_id and u.target_id == rel.target_id and u.type == rel.type.value
                          for u in unresolved):
                 unresolved.append(self._classify(rel))
+        self._add_submodule_imports(out)
+        for key in [k for k, r in out.items() if r.type == RelationType.IMPORTS and r.source_id == r.target_id]:
+            del out[key]               # `from . import db` inside pkg/__init__.py reached the package itself: no information
         return list(out.values()), unresolved
+
+    def _add_submodule_imports(self, out: dict[str, Relationship]) -> None:
+        """`from pkg import name` / `from . import name` where pkg/name.py (or pkg/name/__init__.py) exists imports that
+        submodule as well; the first resolution only reached pkg/__init__.py."""
+        for rel in list(out.values()):
+            names = rel.metadata.get("names") if rel.type == RelationType.IMPORTS else None
+            if not names or not rel.target_id.endswith("__init__.py"):
+                continue
+            base = rel.target_id.removeprefix("file:").rsplit("/", 1)[0] if "/" in rel.target_id.removeprefix("file:") else ""
+            for name in names:
+                for cand in (f"{base}/{name}.py" if base else f"{name}.py", f"{base}/{name}/__init__.py" if base else f"{name}/__init__.py"):
+                    if cand in self.file_paths and f"file:{cand}" != rel.source_id:
+                        new = rel.model_copy(update={"target_id": f"file:{cand}", "metadata": {}})
+                        out.setdefault(new.key, new)
+                        break
 
     # ------------------------------------------------------------------ rule 1: HTML pairing
     def _script_includers(self, relationships: list[Relationship]) -> dict[str, list[str]]:
@@ -175,8 +200,8 @@ class RelationshipResolver:
                 hits.append(el)
             elif selector.startswith(".") and selector[1:] in el.metadata.get("classes", []):
                 hits.append(el)
-        if hits or selector[:1] in "#.":
-            return hits
+        if hits or re.fullmatch(r"[#.][\w-]+", selector):
+            return hits                                  # a plain #id / .class that matched nothing: nothing to guess
         # `input`, `form.login`, `.row > .col`, `[data-x]`: let the CSS selector engine decide (static DOM only)
         from repomind.analyzers import css_selectors as cs
         parsed = cs.parse_selector(selector)

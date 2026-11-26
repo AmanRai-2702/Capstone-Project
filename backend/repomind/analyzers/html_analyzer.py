@@ -87,6 +87,7 @@ class HTMLAnalyzer(BaseAnalyzer):
         dom_stack: list[dict] = []                 # ancestors of the element being visited
         sibling_counters: list[list[int]] = [[0]]  # one counter of element children per open element
         dom_info: dict[str, tuple[list[dict], dict]] = {}   # entity id -> (ancestor descriptors, own descriptor)
+        unnamed_on_line: dict[tuple[str, int], int] = {}
 
         def walk(node: tree_sitter.Node) -> None:
             nonlocal id_ancestor_stack
@@ -171,7 +172,14 @@ class HTMLAnalyzer(BaseAnalyzer):
                 if "id" in attrs or tag_name in NOTABLE_TAGS or (
                         "class" in attrs and tag_name not in IGNORED_TAGS):
                     raw_id = attrs.get("id", "")
-                    elem_selector = f"#{raw_id}" if raw_id else f"{tag_name}@{start_line}"
+                    if raw_id:
+                        elem_selector = f"#{raw_id}"
+                    else:
+                        # `tag@line`; a second element of the same tag on the same line (dense or minified markup)
+                        # gets `tag@line:2`, ... so that it does not silently replace the first one
+                        seen = unnamed_on_line.get((tag_name, start_line), 0)
+                        unnamed_on_line[(tag_name, start_line)] = seen + 1
+                        elem_selector = f"{tag_name}@{start_line}" if seen == 0 else f"{tag_name}@{start_line}:{seen + 1}"
                     entity_id = f"html:{rel_path}:{elem_selector}"
                     classes = attrs.get("class", "").split()
 

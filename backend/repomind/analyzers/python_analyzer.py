@@ -171,6 +171,8 @@ class PythonASTVisitor(ast.NodeVisitor):
                             ),
                         )
                     ],
+                    # `from pkg import name` may import a SUBMODULE pkg/name.py: the resolver checks that
+                    metadata={"names": [a.name for a in node.names if a.name != "*"]},
                 )
             )
             for alias in node.names:

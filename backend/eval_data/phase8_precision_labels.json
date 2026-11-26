@@ -1,0 +1,1335 @@
+{
+ "_about": "One reviewer's verdicts on a seeded stratified sample (backend/eval_data/phase8_precision_sample.json). Doubtful items were checked against the repository source. Wrong = the relationship points at the wrong entity or does not exist.",
+ "labels": [
+  {
+   "index": 0,
+   "target": "microblog",
+   "type": "REQUESTS",
+   "kind": "detected",
+   "source": "app/templates/base.html",
+   "dest": "/translate",
+   "verdict": "correct",
+   "note": "correct request; attributed to the template file instead of the enclosing function (Jinja inside the script)"
+  },
+  {
+   "index": 1,
+   "target": "microblog",
+   "type": "REFERENCES",
+   "kind": "detected",
+   "source": "set_message_count",
+   "dest": "#message_count",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 2,
+   "target": "microblog",
+   "type": "RETURNS",
+   "kind": "inferred",
+   "source": "User.add_notification",
+   "dest": "Notification",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 3,
+   "target": "microblog",
+   "type": "INHERITS",
+   "kind": "detected",
+   "source": "User",
+   "dest": "PaginatedAPIMixin",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 4,
+   "target": "microblog",
+   "type": "READS_STATE",
+   "kind": "inferred",
+   "source": "User.check_password",
+   "dest": "User.set_password",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 5,
+   "target": "microblog",
+   "type": "DATA_FLOW",
+   "kind": "inferred",
+   "source": "User.is_following",
+   "dest": "User",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 6,
+   "target": "microblog",
+   "type": "REFERENCES",
+   "kind": "inferred",
+   "source": "app/templates/errors/404.html",
+   "dest": "app/templates/base.html",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 7,
+   "target": "microblog",
+   "type": "CALLS",
+   "kind": "detected",
+   "source": "initialize_notifications",
+   "dest": "set_message_count",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 8,
+   "target": "microblog",
+   "type": "HANDLES",
+   "kind": "detected",
+   "source": "send_message",
+   "dest": "/send_message/<recipient>",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 9,
+   "target": "microblog",
+   "type": "CALLS",
+   "kind": "inferred",
+   "source": "token_auth_error",
+   "dest": "error_response",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 10,
+   "target": "microblog",
+   "type": "IMPORTS",
+   "kind": "detected",
+   "source": "app/__init__.py",
+   "dest": "config.py",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 11,
+   "target": "microblog",
+   "type": "RETURNS",
+   "kind": "inferred",
+   "source": "User.launch_task",
+   "dest": "Task",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 12,
+   "target": "microblog",
+   "type": "INHERITS",
+   "kind": "detected",
+   "source": "Post",
+   "dest": "SearchableMixin",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 13,
+   "target": "microblog",
+   "type": "READS_STATE",
+   "kind": "inferred",
+   "source": "UserModelCase.tearDown",
+   "dest": "UserModelCase.setUp",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 14,
+   "target": "microblog",
+   "type": "DATA_FLOW",
+   "kind": "inferred",
+   "source": "Message",
+   "dest": "MessageForm",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 15,
+   "target": "microblog",
+   "type": "REFERENCES",
+   "kind": "inferred",
+   "source": "app/templates/send_message.html",
+   "dest": "app/templates/base.html",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 16,
+   "target": "microblog",
+   "type": "CALLS",
+   "kind": "detected",
+   "source": "handle_exception",
+   "dest": "error_response",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 17,
+   "target": "microblog",
+   "type": "HANDLES",
+   "kind": "detected",
+   "source": "export_posts",
+   "dest": "/export_posts",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 18,
+   "target": "microblog",
+   "type": "CALLS",
+   "kind": "inferred",
+   "source": "reset_password_request",
+   "dest": "ResetPasswordRequestForm",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 19,
+   "target": "microblog",
+   "type": "IMPORTS",
+   "kind": "detected",
+   "source": "app/auth/routes.py",
+   "dest": "app/auth/forms.py",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 20,
+   "target": "microblog",
+   "type": "INHERITS",
+   "kind": "detected",
+   "source": "TestConfig",
+   "dest": "Config",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 21,
+   "target": "microblog",
+   "type": "READS_STATE",
+   "kind": "inferred",
+   "source": "User.get_token",
+   "dest": "User.revoke_token",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 22,
+   "target": "microblog",
+   "type": "DATA_FLOW",
+   "kind": "inferred",
+   "source": "Post",
+   "dest": "PostForm",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 23,
+   "target": "microblog",
+   "type": "REFERENCES",
+   "kind": "inferred",
+   "source": "app/templates/errors/500.html",
+   "dest": "app/templates/base.html",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 24,
+   "target": "flask-tutorial",
+   "type": "RETURNS",
+   "kind": "inferred",
+   "source": "auth",
+   "dest": "AuthActions",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 25,
+   "target": "flask-tutorial",
+   "type": "READS_STATE",
+   "kind": "inferred",
+   "source": "AuthActions.logout",
+   "dest": "AuthActions.__init__",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 26,
+   "target": "flask-tutorial",
+   "type": "REFERENCES",
+   "kind": "inferred",
+   "source": "flaskr/templates/auth/register.html",
+   "dest": "flaskr/templates/base.html",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 27,
+   "target": "flask-tutorial",
+   "type": "CALLS",
+   "kind": "detected",
+   "source": "init_db_command",
+   "dest": "init_db",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 28,
+   "target": "flask-tutorial",
+   "type": "IMPORTS",
+   "kind": "detected",
+   "source": "flaskr/blog.py",
+   "dest": "flaskr/db.py",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 29,
+   "target": "flask-tutorial",
+   "type": "HANDLES",
+   "kind": "detected",
+   "source": "delete",
+   "dest": "/<int:id>/delete",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 30,
+   "target": "flask-tutorial",
+   "type": "CALLS",
+   "kind": "inferred",
+   "source": "test_get_close_db",
+   "dest": "get_db",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 31,
+   "target": "flask-tutorial",
+   "type": "STYLES",
+   "kind": "detected",
+   "source": "input[type=submit]",
+   "dest": "input@13",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 32,
+   "target": "flask-tutorial",
+   "type": "READS_STATE",
+   "kind": "inferred",
+   "source": "AuthActions.login",
+   "dest": "AuthActions.__init__",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 33,
+   "target": "flask-tutorial",
+   "type": "REFERENCES",
+   "kind": "inferred",
+   "source": "flaskr/templates/blog/index.html",
+   "dest": "flaskr/templates/base.html",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 34,
+   "target": "flask-tutorial",
+   "type": "CALLS",
+   "kind": "detected",
+   "source": "auth",
+   "dest": "AuthActions",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 35,
+   "target": "flask-tutorial",
+   "type": "IMPORTS",
+   "kind": "detected",
+   "source": "flaskr/__init__.py",
+   "dest": "flaskr/__init__.py",
+   "verdict": "wrong",
+   "note": "`from . import db` resolved to the package __init__.py, not the submodule db.py"
+  },
+  {
+   "index": 36,
+   "target": "flask-tutorial",
+   "type": "HANDLES",
+   "kind": "detected",
+   "source": "update",
+   "dest": "/<int:id>/update",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 37,
+   "target": "flask-tutorial",
+   "type": "CALLS",
+   "kind": "inferred",
+   "source": "delete",
+   "dest": "get_db",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 38,
+   "target": "flask-tutorial",
+   "type": "STYLES",
+   "kind": "detected",
+   "source": "nav ul li a",
+   "dest": "a@12",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 39,
+   "target": "flask-tutorial",
+   "type": "REFERENCES",
+   "kind": "inferred",
+   "source": "flaskr/templates/blog/create.html",
+   "dest": "flaskr/templates/base.html",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 40,
+   "target": "flask-tutorial",
+   "type": "CALLS",
+   "kind": "detected",
+   "source": "delete",
+   "dest": "get_post",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 41,
+   "target": "flask-tutorial",
+   "type": "IMPORTS",
+   "kind": "detected",
+   "source": "tests/test_factory.py",
+   "dest": "flaskr/__init__.py",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 42,
+   "target": "flask-tutorial",
+   "type": "HANDLES",
+   "kind": "detected",
+   "source": "update",
+   "dest": "/<int:id>/update",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 43,
+   "target": "flask-tutorial",
+   "type": "CALLS",
+   "kind": "inferred",
+   "source": "app",
+   "dest": "get_db",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 44,
+   "target": "flask-tutorial",
+   "type": "STYLES",
+   "kind": "detected",
+   "source": "a",
+   "dest": "a@11",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 45,
+   "target": "flask-tutorial",
+   "type": "REFERENCES",
+   "kind": "inferred",
+   "source": "flaskr/templates/auth/login.html",
+   "dest": "flaskr/templates/base.html",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 46,
+   "target": "flask-tutorial",
+   "type": "CALLS",
+   "kind": "detected",
+   "source": "init_db",
+   "dest": "get_db",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 47,
+   "target": "flask-tutorial",
+   "type": "IMPORTS",
+   "kind": "detected",
+   "source": "tests/test_db.py",
+   "dest": "flaskr/db.py",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 48,
+   "target": "flask-javascript-example",
+   "type": "REFERENCES",
+   "kind": "inferred",
+   "source": "js_example/templates/jquery.html",
+   "dest": "js_example/templates/base.html",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 49,
+   "target": "flask-javascript-example",
+   "type": "IMPORTS",
+   "kind": "detected",
+   "source": "tests/conftest.py",
+   "dest": "js_example/__init__.py",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 50,
+   "target": "flask-javascript-example",
+   "type": "HANDLES",
+   "kind": "detected",
+   "source": "add",
+   "dest": "/add",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 51,
+   "target": "flask-javascript-example",
+   "type": "REFERENCES",
+   "kind": "detected",
+   "source": "js_example/templates/xhr.html",
+   "dest": "#calc",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 52,
+   "target": "flask-javascript-example",
+   "type": "REFERENCES",
+   "kind": "inferred",
+   "source": "js_example/templates/xhr.html",
+   "dest": "js_example/templates/base.html",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 53,
+   "target": "flask-javascript-example",
+   "type": "IMPORTS",
+   "kind": "detected",
+   "source": "js_example/views.py",
+   "dest": "js_example/__init__.py",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 54,
+   "target": "flask-javascript-example",
+   "type": "HANDLES",
+   "kind": "detected",
+   "source": "index",
+   "dest": "/<any(xhr, jquery, fetch):js>",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 55,
+   "target": "flask-javascript-example",
+   "type": "REFERENCES",
+   "kind": "detected",
+   "source": "addShow",
+   "dest": "#result",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 56,
+   "target": "flask-javascript-example",
+   "type": "REFERENCES",
+   "kind": "inferred",
+   "source": "js_example/templates/fetch.html",
+   "dest": "js_example/templates/base.html",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 57,
+   "target": "flask-javascript-example",
+   "type": "IMPORTS",
+   "kind": "detected",
+   "source": "js_example/__init__.py",
+   "dest": "js_example/__init__.py",
+   "verdict": "wrong",
+   "note": "`from js_example import views` resolved to __init__.py, not views.py"
+  },
+  {
+   "index": 58,
+   "target": "flask-javascript-example",
+   "type": "HANDLES",
+   "kind": "detected",
+   "source": "index",
+   "dest": "/",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 59,
+   "target": "flask-javascript-example",
+   "type": "REFERENCES",
+   "kind": "detected",
+   "source": "js_example/templates/fetch.html",
+   "dest": "#calc",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 60,
+   "target": "flask-javascript-example",
+   "type": "REFERENCES",
+   "kind": "detected",
+   "source": "addShow",
+   "dest": "#result",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 61,
+   "target": "fastapi-backend",
+   "type": "INHERITS",
+   "kind": "detected",
+   "source": "Item",
+   "dest": "ItemBase",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 62,
+   "target": "fastapi-backend",
+   "type": "RETURNS",
+   "kind": "inferred",
+   "source": "read_items",
+   "dest": "ItemsPublic",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 63,
+   "target": "fastapi-backend",
+   "type": "USES",
+   "kind": "detected",
+   "source": "create_item",
+   "dest": "ItemCreate",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 64,
+   "target": "fastapi-backend",
+   "type": "CALLS",
+   "kind": "detected",
+   "source": "generate_test_email",
+   "dest": "EmailData",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 65,
+   "target": "fastapi-backend",
+   "type": "RETURNS",
+   "kind": "detected",
+   "source": "test_email",
+   "dest": "Message",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 66,
+   "target": "fastapi-backend",
+   "type": "DATA_FLOW",
+   "kind": "inferred",
+   "source": "UserUpdate",
+   "dest": "random_lower_string",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 67,
+   "target": "fastapi-backend",
+   "type": "HANDLES",
+   "kind": "detected",
+   "source": "read_users",
+   "dest": "/",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 68,
+   "target": "fastapi-backend",
+   "type": "IMPORTS",
+   "kind": "detected",
+   "source": "app/api/routes/login.py",
+   "dest": "app/__init__.py",
+   "verdict": "wrong",
+   "note": "`from app import crud` resolved to app/__init__.py, not app/crud.py"
+  },
+  {
+   "index": 69,
+   "target": "fastapi-backend",
+   "type": "CALLS",
+   "kind": "inferred",
+   "source": "recover_password",
+   "dest": "generate_password_reset_token",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 70,
+   "target": "fastapi-backend",
+   "type": "INHERITS",
+   "kind": "detected",
+   "source": "ItemPublic",
+   "dest": "ItemBase",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 71,
+   "target": "fastapi-backend",
+   "type": "RETURNS",
+   "kind": "inferred",
+   "source": "read_users",
+   "dest": "UsersPublic",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 72,
+   "target": "fastapi-backend",
+   "type": "USES",
+   "kind": "detected",
+   "source": "update_user",
+   "dest": "UserUpdate",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 73,
+   "target": "fastapi-backend",
+   "type": "CALLS",
+   "kind": "detected",
+   "source": "random_email",
+   "dest": "random_lower_string",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 74,
+   "target": "fastapi-backend",
+   "type": "RETURNS",
+   "kind": "detected",
+   "source": "recover_password",
+   "dest": "Message",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 75,
+   "target": "fastapi-backend",
+   "type": "DATA_FLOW",
+   "kind": "inferred",
+   "source": "generate_reset_password_email",
+   "dest": "generate_password_reset_token",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 76,
+   "target": "fastapi-backend",
+   "type": "HANDLES",
+   "kind": "detected",
+   "source": "create_user",
+   "dest": "/users/",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 77,
+   "target": "fastapi-backend",
+   "type": "IMPORTS",
+   "kind": "detected",
+   "source": "app/utils.py",
+   "dest": "app/core/config.py",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 78,
+   "target": "fastapi-backend",
+   "type": "CALLS",
+   "kind": "inferred",
+   "source": "test_update_item",
+   "dest": "create_random_item",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 79,
+   "target": "fastapi-backend",
+   "type": "INHERITS",
+   "kind": "detected",
+   "source": "UserCreate",
+   "dest": "UserBase",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 80,
+   "target": "fastapi-backend",
+   "type": "RETURNS",
+   "kind": "inferred",
+   "source": "delete_user_me",
+   "dest": "Message",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 81,
+   "target": "fastapi-backend",
+   "type": "USES",
+   "kind": "detected",
+   "source": "create_user",
+   "dest": "UserCreate",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 82,
+   "target": "fastapi-backend",
+   "type": "CALLS",
+   "kind": "detected",
+   "source": "run_migrations_online",
+   "dest": "get_url",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 83,
+   "target": "fastapi-backend",
+   "type": "RETURNS",
+   "kind": "detected",
+   "source": "generate_new_account_email",
+   "dest": "EmailData",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 84,
+   "target": "fastapi-backend",
+   "type": "DATA_FLOW",
+   "kind": "inferred",
+   "source": "User",
+   "dest": "get_password_hash",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 85,
+   "target": "vanilla-web-projects",
+   "type": "REFERENCES",
+   "kind": "inferred",
+   "source": "product-filtering/index.html",
+   "dest": "product-filtering/script.js",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 86,
+   "target": "vanilla-web-projects",
+   "type": "TRIGGERS",
+   "kind": "heuristic",
+   "source": "div@36",
+   "dest": "handler@60",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 87,
+   "target": "vanilla-web-projects",
+   "type": "REFERENCES",
+   "kind": "heuristic",
+   "source": "movie-seat-booking/script.js",
+   "dest": "div@36",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 88,
+   "target": "vanilla-web-projects",
+   "type": "TRIGGERS",
+   "kind": "detected",
+   "source": "#amount-two",
+   "dest": "calculate",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 89,
+   "target": "vanilla-web-projects",
+   "type": "CALLS",
+   "kind": "detected",
+   "source": "movie-seat-booking/script.js",
+   "dest": "updateSelectedCount",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 90,
+   "target": "vanilla-web-projects",
+   "type": "STYLES",
+   "kind": "inferred",
+   "source": ".seat:not(.occupied):hover",
+   "dest": "div@51",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 91,
+   "target": "vanilla-web-projects",
+   "type": "REFERENCES",
+   "kind": "detected",
+   "source": "handler@124",
+   "dest": "#text-box",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 92,
+   "target": "vanilla-web-projects",
+   "type": "STYLES",
+   "kind": "detected",
+   "source": "button",
+   "dest": "#settings-btn",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 93,
+   "target": "vanilla-web-projects",
+   "type": "REFERENCES",
+   "kind": "heuristic",
+   "source": "pauseSong",
+   "dest": "i@38",
+   "verdict": "wrong",
+   "note": "`playBtn.querySelector('i.fas')` is scoped to #play; it matched the forward icon (i@38) too"
+  },
+  {
+   "index": 94,
+   "target": "vanilla-web-projects",
+   "type": "TRIGGERS",
+   "kind": "detected",
+   "source": "#meals",
+   "dest": "handler@113",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 95,
+   "target": "vanilla-web-projects",
+   "type": "CALLS",
+   "kind": "detected",
+   "source": "checkEmail",
+   "dest": "showError",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 96,
+   "target": "vanilla-web-projects",
+   "type": "STYLES",
+   "kind": "inferred",
+   "source": ".seat:not(.occupied):hover",
+   "dest": "div@72",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 97,
+   "target": "vanilla-web-projects",
+   "type": "REFERENCES",
+   "kind": "detected",
+   "source": "modal-menu-slider/script.js",
+   "dest": "#open",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 98,
+   "target": "vanilla-web-projects",
+   "type": "STYLES",
+   "kind": "detected",
+   "source": ".figure-part",
+   "dest": "line@30",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 99,
+   "target": "vanilla-web-projects",
+   "type": "REFERENCES",
+   "kind": "heuristic",
+   "source": "pauseSong",
+   "dest": "i@32",
+   "verdict": "wrong",
+   "note": "same scoped querySelector: matched the backward icon (i@32), which is not inside #play"
+  },
+  {
+   "index": 100,
+   "target": "vanilla-web-projects",
+   "type": "TRIGGERS",
+   "kind": "detected",
+   "source": "#filters-container",
+   "dest": "filterProducts",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 101,
+   "target": "vanilla-web-projects",
+   "type": "CALLS",
+   "kind": "detected",
+   "source": "expense-tracker/script.js",
+   "dest": "init",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 102,
+   "target": "vanilla-web-projects",
+   "type": "STYLES",
+   "kind": "inferred",
+   "source": "input:focus",
+   "dest": "#amount-one",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 103,
+   "target": "vanilla-web-projects",
+   "type": "REFERENCES",
+   "kind": "detected",
+   "source": "hangman/script.js",
+   "dest": "#play-button",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 104,
+   "target": "vanilla-web-projects",
+   "type": "STYLES",
+   "kind": "detected",
+   "source": ".seat",
+   "dest": "div@41",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 105,
+   "target": "vanilla-web-projects",
+   "type": "REFERENCES",
+   "kind": "heuristic",
+   "source": "playSong",
+   "dest": "i@32",
+   "verdict": "wrong",
+   "note": "same scoped querySelector: matched the backward icon (i@32), which is not inside #play"
+  },
+  {
+   "index": 106,
+   "target": "vanilla-web-projects",
+   "type": "TRIGGERS",
+   "kind": "detected",
+   "source": "#audio",
+   "dest": "nextSong",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 107,
+   "target": "vanilla-web-projects",
+   "type": "CALLS",
+   "kind": "detected",
+   "source": "handler@90",
+   "dest": "getLyrics",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 108,
+   "target": "vanilla-web-projects",
+   "type": "STYLES",
+   "kind": "inferred",
+   "source": "nav ul li a:hover",
+   "dest": "a@22",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 109,
+   "target": "flask-lib",
+   "type": "USES",
+   "kind": "inferred",
+   "source": "test_limit_config",
+   "dest": "Flask",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 110,
+   "target": "flask-lib",
+   "type": "REFERENCES",
+   "kind": "detected",
+   "source": "addShow",
+   "dest": "#result",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 111,
+   "target": "flask-lib",
+   "type": "REFERENCES",
+   "kind": "inferred",
+   "source": "examples/tutorial/flaskr/templates/blog/index.html",
+   "dest": "examples/tutorial/flaskr/templates/base.html",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 112,
+   "target": "flask-lib",
+   "type": "CALLS",
+   "kind": "heuristic",
+   "source": "Flask.handle_user_exception",
+   "dest": "App.trap_http_exception",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 113,
+   "target": "flask-lib",
+   "type": "RETURNS",
+   "kind": "inferred",
+   "source": "return_dict",
+   "dest": "Response",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 114,
+   "target": "flask-lib",
+   "type": "DATA_FLOW",
+   "kind": "inferred",
+   "source": "show_server_banner",
+   "dest": "get_debug_flag",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 115,
+   "target": "flask-lib",
+   "type": "STYLES",
+   "kind": "detected",
+   "source": "a",
+   "dest": "a@4",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 116,
+   "target": "flask-lib",
+   "type": "INHERITS",
+   "kind": "detected",
+   "source": "SessionMixinProxy",
+   "dest": "SessionMixin",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 117,
+   "target": "flask-lib",
+   "type": "RETURNS",
+   "kind": "detected",
+   "source": "after_sync",
+   "dest": "Response",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 118,
+   "target": "flask-lib",
+   "type": "READS_STATE",
+   "kind": "inferred",
+   "source": "AppContext.pop",
+   "dest": "AppContext.push",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 119,
+   "target": "flask-lib",
+   "type": "USES",
+   "kind": "detected",
+   "source": "JSONProvider.__init__",
+   "dest": "App",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 120,
+   "target": "flask-lib",
+   "type": "CALLS",
+   "kind": "detected",
+   "source": "TaggedJSONSerializer.__init__",
+   "dest": "TaggedJSONSerializer.register",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 121,
+   "target": "flask-lib",
+   "type": "IMPORTS",
+   "kind": "detected",
+   "source": "tests/test_subclassing.py",
+   "dest": "src/flask/__init__.py",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 122,
+   "target": "flask-lib",
+   "type": "HANDLES",
+   "kind": "detected",
+   "source": "for_bar_foo",
+   "dest": "/bar/123",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 123,
+   "target": "flask-lib",
+   "type": "CALLS",
+   "kind": "inferred",
+   "source": "test_request_signals",
+   "dest": "Flask",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 124,
+   "target": "flask-lib",
+   "type": "USES",
+   "kind": "inferred",
+   "source": "test_max_content_length",
+   "dest": "Flask",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 125,
+   "target": "flask-lib",
+   "type": "REFERENCES",
+   "kind": "detected",
+   "source": "examples/javascript/js_example/templates/xhr.html",
+   "dest": "#calc",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 126,
+   "target": "flask-lib",
+   "type": "REFERENCES",
+   "kind": "inferred",
+   "source": "examples/tutorial/flaskr/templates/auth/register.html",
+   "dest": "examples/tutorial/flaskr/templates/base.html",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 127,
+   "target": "flask-lib",
+   "type": "CALLS",
+   "kind": "heuristic",
+   "source": "App._find_error_handler",
+   "dest": "Scaffold._get_exc_class_and_code",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 128,
+   "target": "flask-lib",
+   "type": "RETURNS",
+   "kind": "inferred",
+   "source": "app",
+   "dest": "Flask",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 129,
+   "target": "flask-lib",
+   "type": "DATA_FLOW",
+   "kind": "inferred",
+   "source": "Flask.handle_exception",
+   "dest": "Flask.request_context",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 130,
+   "target": "flask-lib",
+   "type": "STYLES",
+   "kind": "detected",
+   "source": ".flash",
+   "dest": "div@21",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 131,
+   "target": "flask-lib",
+   "type": "INHERITS",
+   "kind": "detected",
+   "source": "SecureCookieSession",
+   "dest": "SessionMixin",
+   "verdict": "correct",
+   "note": ""
+  },
+  {
+   "index": 132,
+   "target": "flask-lib",
+   "type": "RETURNS",
+   "kind": "detected",
+   "source": "Flask.request_context",
+   "dest": "AppContext",
+   "verdict": "correct",
+   "note": ""
+  }
+ ]
+}

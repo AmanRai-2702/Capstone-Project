@@ -204,5 +204,11 @@ class AnalysisService:
             if e.id not in all_entities:
                 all_entities[e.id] = e
         for r in relationships:
-            if r.key not in all_relationships:
+            prev = all_relationships.get(r.key)
+            if prev is None:
                 all_relationships[r.key] = r
+            elif r.type.value == "IMPORTS" and r.metadata.get("names"):
+                # `from pkg import a` and `from pkg import b` are two statements but one (source, target) pair:
+                # keep the names of both so the resolver can find the submodules among them
+                names = sorted(set(prev.metadata.get("names", [])) | set(r.metadata["names"]))
+                all_relationships[r.key] = prev.model_copy(update={"metadata": {**prev.metadata, "names": names}})

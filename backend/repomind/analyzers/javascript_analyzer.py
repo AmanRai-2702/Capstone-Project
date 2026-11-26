@@ -264,7 +264,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
                                     )
                                 )
                             # If assigning a DOM element
-                            dom_selector = self._extract_dom_selector_from_node(val_node)
+                            dom_selector = self._extract_dom_selector_from_node(val_node, var_to_dom)
                             if dom_selector:
                                 var_to_dom[var_name] = dom_selector
 
@@ -320,7 +320,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
             result.add_relationship(Relationship(source_id=file_id, target_id=func_id, type=RelationType.CONTAINS,
                                                  kind=RelationKind.DETECTED, confidence=1.0))
 
-    def _extract_dom_selector_from_node(self, node: tree_sitter.Node) -> str | None:
+    def _extract_dom_selector_from_node(self, node: tree_sitter.Node, var_to_dom: dict[str, str] | None = None) -> str | None:
         """Extract selector string from document.getElementById or querySelector call."""
         if node.type != "call_expression":
             return None
@@ -340,6 +340,15 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         elif func_node.type == "member_expression":
             prop = func_node.child_by_field_name("property")
             method = prop.text.decode("utf-8") if prop else ""
+            obj = func_node.child_by_field_name("object")
+            receiver = obj.text.decode("utf-8") if obj is not None else ""
+            if receiver not in ("document", "document.body", "document.documentElement"):
+                # `el.querySelector(sel)` searches INSIDE el, not the whole page. If el is a known element the lookup
+                # is the descendant selector "<el's selector> <sel>"; if we do not know what el is, say nothing.
+                parent = var_to_dom.get(receiver) if var_to_dom and obj is not None and obj.type == "identifier" else None
+                if method == "querySelector" and parent:
+                    return f"{parent} {_strip_quotes(first.text.decode('utf-8'))}"
+                return None
         else:
             return None
         arg_text = _strip_quotes(first.text.decode("utf-8"))
@@ -382,7 +391,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
             elif val is not None and name_node is not None and current_func_id is not None:
                 # `const el = document.getElementById("x")` inside a function: remember it from here
                 # on (flow-insensitive, file-wide map; a reused variable name overwrites the entry).
-                selector = self._extract_dom_selector_from_node(val)
+                selector = self._extract_dom_selector_from_node(val, var_to_dom)
                 if selector:
                     var_to_dom[name_node.text.decode("utf-8")] = selector
         elif node.type == "method_definition":
@@ -618,7 +627,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         if target is not None and target.type == "identifier":
             selector = var_to_dom.get(target.text.decode("utf-8"))
         elif target is not None:
-            selector = self._extract_dom_selector_from_node(target)
+            selector = self._extract_dom_selector_from_node(target, var_to_dom)
         first = args_node.named_children[0]
         if selector and selector.startswith("#") and first.type == "string":
             result.dynamic_classes.setdefault(selector[1:], set()).add(_strip_quotes(first.text.decode("utf-8")))
@@ -646,7 +655,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         snippet = get_snippet(start_line, end_line)
 
         # 1. DOM References: document.getElementById or document.querySelector
-        dom_selector = self._extract_dom_selector_from_node(node)
+        dom_selector = self._extract_dom_selector_from_node(node, var_to_dom)
         if dom_selector:
             target_elem_id = f"html:{html_path}:{dom_selector}"
             result.add_relationship(
@@ -1019,7 +1028,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
 
         # Case B: document.getElementById("profile-btn").addEventListener(...)
         elif caller_node and caller_node.type == "call_expression":
-            dom_selector = self._extract_dom_selector_from_node(caller_node)
+            dom_selector = self._extract_dom_selector_from_node(caller_node, var_to_dom)
 
         if not dom_selector:
             return
@@ -1053,7 +1062,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         if obj.type == "identifier":
             selector = var_to_dom.get(obj.text.decode("utf-8"))
         elif obj.type == "call_expression":
-            selector = self._extract_dom_selector_from_node(obj)
+            selector = self._extract_dom_selector_from_node(obj, var_to_dom)
         if not selector:
             return
         loc = SourceLocation(file_path=rel_path, start_line=node.start_point[0] + 1, end_line=node.end_point[0] + 1)
