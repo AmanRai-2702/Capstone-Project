@@ -33,6 +33,7 @@ from pydantic import BaseModel, Field
 
 from repomind.config import Settings
 from repomind.graph import RepositoryGraph
+from repomind.graph.repository_graph import COUPLING_TYPES, VIEWS
 from repomind.ingestion.errors import IngestionError
 from repomind.models import RepositoryAnalysis
 from repomind.qa import QAService, get_provider
@@ -67,6 +68,7 @@ class TraceRequest(BaseModel):
     source: str = Field(min_length=1, max_length=512)
     target: str = Field(min_length=1, max_length=512)
     max_depth: int = Field(default=10, ge=1, le=50)
+    view: str = Field(default="execution", description="syntactic | execution | dependency | impact")
 
 
 class ImpactRequest(BaseModel):
@@ -222,11 +224,72 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"deleted": repo_id}
 
     # ------------------------------------------------------------------ graph
+    def csv(value: str | None) -> list[str] | None:
+        return [v.strip() for v in value.split(",") if v.strip()] if value else None
+
     @api.get("/api/repositories/{repo_id}/graph")
-    def get_graph(repo_id: str, include_files: bool = True) -> dict:
+    def get_graph(repo_id: str, include_files: bool = True,
+                  level: str = Query("entity", pattern="^(entity|file)$", description="entity graph, or collapsed to files"),
+                  types: str | None = Query(None, description="entity types, comma separated (function,class,...)"),
+                  languages: str | None = Query(None, description="python,javascript,html,css"),
+                  rel_types: str | None = Query(None, description="relationship types, comma separated"),
+                  kinds: str | None = Query(None, description="detected,inferred,heuristic"),
+                  min_confidence: float = Query(0.0, ge=0.0, le=1.0),
+                  q: str | None = Query(None, description="id / name fragment"),
+                  max_nodes: int | None = Query(None, ge=5, le=20000, description="keep the best-connected N nodes"),
+                  include_evidence: bool = False) -> dict:
+        """The knowledge graph for a UI. With `level=file` it is collapsed to one node per file (use this for
+        large repositories); otherwise every filter narrows the entity graph. `meta` tells whether it was
+        truncated by `max_nodes`."""
         s = session(repo_id)
-        keep = {e.id for e in s.analysis.entities if include_files or e.type.value != "file"}
-        return s.graph.subgraph_json(keep)
+        if level == "file":
+            g = s.graph.module_graph(csv(rel_types) or COUPLING_TYPES)
+            langs = csv(languages)
+            nodes = [n for n in g["nodes"] if (not langs or n["language"] in langs)
+                     and (not q or q.lower() in n["id"].lower())]
+            keep = {n["id"] for n in nodes}
+            total = len(nodes)
+            if max_nodes and total > max_nodes:
+                deg = {i: 0 for i in keep}
+                for e in g["edges"]:
+                    for end in (e["source"], e["target"]):
+                        if end in deg:
+                            deg[end] += 1
+                keep = set(sorted(keep, key=lambda i: (-deg[i], i))[:max_nodes])
+            return {"nodes": [n for n in nodes if n["id"] in keep],
+                    "edges": [e for e in g["edges"] if e["source"] in keep and e["target"] in keep],
+                    "meta": {"level": "file", "total_nodes": total, "truncated": len(keep) < total}}
+        keep = s.graph.select_nodes(csv(types), csv(languages), q, include_files)
+        total = len(keep)
+        if max_nodes and total > max_nodes:
+            keep = s.graph.top_nodes(keep, max_nodes)
+        out = s.graph.subgraph_json(keep, csv(rel_types), csv(kinds), min_confidence, include_evidence)
+        out["meta"] = {"level": "entity", "total_nodes": total, "truncated": len(keep) < total}
+        return out
+
+    @api.get("/api/repositories/{repo_id}/graph/neighborhood")
+    def get_neighborhood(repo_id: str, id: str, depth: int = Query(1, ge=1, le=6),
+                         direction: str = Query("both", pattern="^(in|out|both)$"),
+                         rel_types: str | None = None, view: str = Query("syntactic"),
+                         max_nodes: int = Query(200, ge=5, le=5000)) -> dict:
+        """Everything within `depth` hops of an entity (nearest first, at most `max_nodes`)."""
+        s = session(repo_id)
+        center = entity_or_404(s, id)
+        if view not in VIEWS:
+            raise HTTPException(422, f"view must be one of {', '.join(VIEWS)}")
+        keep = s.graph.neighborhood(center.id, depth, direction, csv(rel_types), view, max_nodes)
+        out = s.graph.subgraph_json(keep, csv(rel_types))
+        out["meta"] = {"center": center.id, "depth": depth, "direction": direction, "view": view,
+                       "truncated": len(keep) >= max_nodes}
+        return out
+
+    @api.get("/api/repositories/{repo_id}/graph/edge")
+    def get_edge(repo_id: str, source: str, type: str, target: str) -> dict:
+        """One relationship with its evidence (snippets and source locations)."""
+        found = session(repo_id).graph.edge_details(source, type, target)
+        if found is None:
+            raise HTTPException(404, "No such relationship.")
+        return found
 
     @api.get("/api/repositories/{repo_id}/entities")
     def search_entities(repo_id: str, q: str = Query("", description="name, qualified name or id fragment"),
@@ -280,20 +343,31 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             out.append({"entry": entry, "paths": paths})
         return out
 
-    def do_trace(repo_id: str, source: str, target: str, max_depth: int) -> dict:
+    def do_trace(repo_id: str, source: str, target: str, max_depth: int, view: str = "execution") -> dict:
         s = session(repo_id)
-        a, b = entity_or_404(s, source), entity_or_404(s, target)
-        paths = s.graph.find_paths(a.id, b.id, max_depth=max_depth)
-        return {"source": a.id, "target": b.id,
-                "paths": [{"nodes": p, "hops": s.graph.describe_path(p)} for p in paths]}
+        if view not in VIEWS:
+            raise HTTPException(422, f"view must be one of {', '.join(VIEWS)}")
+        ends = []
+        for query in (source, target):
+            matches = s.graph.resolve(query)
+            if not matches:
+                raise HTTPException(404, f"No entity matches '{query}'")
+            ends.append(matches)
+        a, b = ends[0][0], ends[1][0]
+        paths = s.graph.find_paths(a.id, b.id, max_depth=max_depth, view=view)
+        return {"source": a.id, "target": b.id, "view": view,
+                # when a name matched several entities, say which candidates exist: the pick is not silent
+                "ambiguous": {q: [e.id for e in m[:8]] for q, m in zip((source, target), ends) if len(m) > 1},
+                "paths": [s.graph.path_summary(p, view) for p in paths]}
 
     @api.get("/api/repositories/{repo_id}/trace")
-    def trace_get(repo_id: str, source: str, target: str, max_depth: int = Query(10, ge=1, le=50)) -> dict:
-        return do_trace(repo_id, source, target, max_depth)
+    def trace_get(repo_id: str, source: str, target: str, max_depth: int = Query(10, ge=1, le=50),
+                  view: str = "execution") -> dict:
+        return do_trace(repo_id, source, target, max_depth, view)
 
     @api.post("/api/repositories/{repo_id}/trace")
     def trace_post(repo_id: str, req: TraceRequest) -> dict:
-        return do_trace(repo_id, req.source, req.target, req.max_depth)
+        return do_trace(repo_id, req.source, req.target, req.max_depth, req.view)
 
     # ------------------------------------------------------------------ impact / Q&A / source
     @api.get("/api/repositories/{repo_id}/impact")

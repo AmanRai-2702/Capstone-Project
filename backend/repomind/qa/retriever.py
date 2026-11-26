@@ -74,6 +74,7 @@ PHRASE = {
     "TRIGGERS": "triggers", "REQUESTS": "sends a request to", "HANDLES": "is handled by",
     "CALLS": "calls", "REFERENCES": "references", "IMPORTS": "imports", "STYLES": "styles",
     "CONTAINS": "contains", "INHERITS": "inherits from", "USES": "uses",
+    "CONSTRUCTS": "runs the constructor",
 }
 
 
@@ -266,7 +267,7 @@ class Retriever:
         for start in starts:
             sinks = sorted(n for n in nx.descendants(flow, start) if flow.out_degree(n) == 0) or [start]
             for sink in sinks:
-                paths = [[start]] if sink == start else sorted(nx.all_simple_paths(flow, start, sink, cutoff=10), key=len)[:3]
+                paths = [[start]] if sink == start else self.graph.find_paths(start, sink, limit=3)
                 for path in paths:
                     for a, b in zip(path, path[1:]):
                         if (a, b) in seen_hops:
@@ -276,7 +277,7 @@ class Retriever:
                         target = self.graph.get_entity(b)
                         cite, snip = self._edge_cite(edge, target)
                         facts.append(Fact(
-                            text=f"{self._label(a)} {PHRASE[edge['type']]} {self._label(b)}{self._tag(edge)}",
+                            text=f"{self._label(a)} {PHRASE.get(edge['type'], edge['type'].lower())} {self._label(b)}{self._tag(edge)}",
                             citation=cite, snippet=snip))
                         for n in (a, b):
                             if n not in involved:

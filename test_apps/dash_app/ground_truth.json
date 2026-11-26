@@ -53,6 +53,10 @@
   [
    "api:DELETE:/api/items/{item_id}",
    "api_endpoint"
+  ],
+  [
+   "javascript:static/js/main.js:hover",
+   "function"
   ]
  ],
  "relationships": [
@@ -181,6 +185,24 @@
    "TRIGGERS",
    "javascript:static/js/api.js:addItem",
    "inferred"
+  ],
+  [
+   "html:static/index.html:#stats",
+   "TRIGGERS",
+   "javascript:static/js/main.js:showStats",
+   "inferred"
+  ],
+  [
+   "html:static/index.html:#chart",
+   "TRIGGERS",
+   "javascript:static/js/main.js:hover",
+   "detected"
+  ],
+  [
+   "file:static/js/main.js",
+   "REFERENCES",
+   "html:static/index.html:#chart",
+   "detected"
   ]
  ],
  "forbidden_relationships": [
@@ -201,6 +223,12 @@
    "REQUESTS",
    "api:POST:/api/items",
    "detected"
+  ],
+  [
+   "html:static/index.html:#chart",
+   "TRIGGERS",
+   "javascript:static/js/main.js:showStats",
+   "inferred"
   ]
  ],
  "notes": "Probe app, written from the source before analysis. Targets: axios requests, dynamic import(), anonymous event handlers (attributed to the element, not leaked between handlers), `$()` DOM helper imported from another module, namespace calls on a dynamically imported module."

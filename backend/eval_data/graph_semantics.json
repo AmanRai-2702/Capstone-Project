@@ -1,0 +1,79 @@
+{
+ "_about": "Ground truth for graph semantics, written from the source code of each test app (not from tool output). paths: the exact SHORTEST execution path. no_path: execution paths that must NOT exist (reverse direction, or between unrelated features). impact: components that must / must not be affected when `target` changes (reverse dependency reachability).",
+ "login_app": {
+  "paths": [
+   {"nodes": ["html:static/index.html:#login-form", "javascript:static/login.js:handleLogin", "api:POST:/api/login", "python:app.py:login", "python:services/auth_service.py:AuthService.authenticate", "python:repositories/user_repository.py:UserRepository.find_by_username"]},
+   {"nodes": ["html:static/index.html:#profile-btn", "javascript:static/login.js:loadProfile", "api:GET:/api/users/{user_id}", "python:app.py:get_user", "python:services/auth_service.py:AuthService.get_user", "python:repositories/user_repository.py:UserRepository.find_by_id"]}
+  ],
+  "no_path": [
+   ["python:repositories/user_repository.py:UserRepository.find_by_username", "html:static/index.html:#login-form"],
+   ["html:static/index.html:#login-form", "python:repositories/user_repository.py:UserRepository.find_by_id"],
+   ["html:static/index.html:#profile-btn", "python:services/auth_service.py:AuthService.authenticate"],
+   ["python:app.py:login", "javascript:static/login.js:handleLogin"]
+  ],
+  "impact": [
+   {"target": "python:repositories/user_repository.py:UserRepository.find_by_username",
+    "must_include": ["python:services/auth_service.py:AuthService.authenticate", "python:app.py:login", "api:POST:/api/login", "javascript:static/login.js:handleLogin", "html:static/index.html:#login-form"],
+    "must_exclude": ["python:app.py:get_user", "javascript:static/login.js:loadProfile", "html:static/index.html:#profile-btn", "javascript:static/login.js:showMessage", "python:services/auth_service.py:AuthService.get_user"]},
+   {"target": "javascript:static/login.js:showMessage",
+    "must_include": ["javascript:static/login.js:handleLogin", "javascript:static/login.js:loadProfile", "html:static/index.html:#login-form", "html:static/index.html:#profile-btn"],
+    "must_exclude": ["python:app.py:login", "api:POST:/api/login", "python:services/auth_service.py:AuthService.authenticate"]}
+  ]
+ },
+ "notes_app": {
+  "paths": [
+   {"nodes": ["html:static/index.html:#note-form", "javascript:static/js/notes.js:addNote", "api:POST:/api/notes", "python:app.py:create_note", "python:services/note_service.py:NoteService.add", "python:repositories/note_repository.py:NoteRepository.insert"]},
+   {"nodes": ["html:static/index.html:#note-form", "javascript:static/js/notes.js:addNote", "api:POST:/api/notes", "python:app.py:create_note", "python:services/note_service.py:NoteService.add", "python:repositories/note_repository.py:NoteRepository.insert", "python:repositories/note_repository.py:BaseRepository._next_id"]},
+   {"_comment": "calling NoteRepository(...) runs the INHERITED BaseRepository.__init__ (NoteRepository defines none)",
+    "nodes": ["python:services/note_service.py:NoteService.__init__", "python:repositories/note_repository.py:NoteRepository", "python:repositories/note_repository.py:BaseRepository.__init__"]}
+  ],
+  "no_path": [
+   ["javascript:static/js/archive.js:loadArchive", "python:repositories/note_repository.py:NoteRepository.insert"],
+   ["javascript:static/js/archive.js:loadArchive", "python:app.py:delete_note"],
+   ["python:app.py:list_notes", "python:app.py:create_note"]
+  ],
+  "impact": [
+   {"target": "python:repositories/note_repository.py:BaseRepository._next_id",
+    "must_include": ["python:repositories/note_repository.py:NoteRepository.insert", "python:services/note_service.py:NoteService.add", "python:app.py:create_note", "api:POST:/api/notes", "javascript:static/js/notes.js:addNote", "html:static/index.html:#note-form"],
+    "must_exclude": ["python:app.py:list_notes", "python:repositories/note_repository.py:NoteRepository.list_all", "javascript:static/js/archive.js:loadArchive", "python:app.py:delete_note", "javascript:static/js/notes.js:removeNote"]}
+  ]
+ },
+ "dash_app": {
+  "paths": [
+   {"nodes": ["html:static/index.html:#refresh", "javascript:static/js/api.js:loadStats", "api:GET:/api/stats", "python:app.py:stats"]},
+   {"nodes": ["html:static/index.html:#refresh", "javascript:static/js/charts.js:drawChart"]},
+   {"nodes": ["html:static/index.html:#add", "javascript:static/js/api.js:addItem", "api:POST:/api/items", "python:app.py:add_item"]}
+  ],
+  "no_path": [
+   ["html:static/index.html:#add", "javascript:static/js/api.js:loadStats"],
+   ["html:static/index.html:#refresh", "python:app.py:add_item"],
+   ["html:static/index.html:#refresh", "python:app.py:delete_item"],
+   ["python:app.py:stats", "html:static/index.html:#refresh"]
+  ],
+  "impact": [
+   {"target": "python:app.py:stats",
+    "must_include": ["api:GET:/api/stats", "javascript:static/js/api.js:loadStats", "html:static/index.html:#refresh"],
+    "must_exclude": ["html:static/index.html:#add", "javascript:static/js/api.js:addItem", "python:app.py:add_item"]},
+   {"target": "javascript:static/js/dom.js:$",
+    "must_include": ["javascript:static/js/main.js:showStats", "javascript:static/js/charts.js:drawChart", "html:static/index.html:#refresh"],
+    "must_exclude": ["javascript:static/js/api.js:loadStats", "javascript:static/js/api.js:addItem", "html:static/index.html:#add"]}
+  ]
+ },
+ "shop_app": {
+  "paths": [
+   {"nodes": ["api:POST:/api/orders", "python:app.py:orders", "python:services/order_service.py:OrderService.place", "python:repositories/order_repository.py:OrderRepository.save"]},
+   {"nodes": ["api:POST:/api/orders", "python:app.py:orders", "python:services/order_service.py:OrderService.place", "python:models/order.py:Order", "python:models/order.py:Order.__init__"]},
+   {"nodes": ["python:services/order_service.py:OrderService.__init__", "python:repositories/order_repository.py:OrderRepository", "python:repositories/order_repository.py:OrderRepository.__init__"]}
+  ],
+  "no_path": [
+   ["api:GET:/api/orders/<int:order_id>", "python:repositories/order_repository.py:OrderRepository.save"],
+   ["python:services/order_service.py:OrderService.find", "python:repositories/order_repository.py:OrderRepository.list_all"],
+   ["python:repositories/order_repository.py:OrderRepository.save", "python:app.py:orders"]
+  ],
+  "impact": [
+   {"target": "python:repositories/order_repository.py:OrderRepository.save",
+    "must_include": ["python:services/order_service.py:OrderService.place", "python:app.py:orders", "api:POST:/api/orders", "api:GET:/api/orders"],
+    "must_exclude": ["python:app.py:get_order", "python:services/order_service.py:OrderService.find", "api:GET:/api/orders/<int:order_id>"]}
+  ]
+ }
+}

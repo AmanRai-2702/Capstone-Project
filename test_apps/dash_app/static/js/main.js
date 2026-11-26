@@ -15,3 +15,8 @@ $("#refresh").addEventListener("click", async () => {
 document.getElementById("add").addEventListener("click", () => {
   addItem({ name: "x" });
 });
+
+function hover() {}
+
+$("#stats").onclick = () => showStats({ visits: 0 });
+document.getElementById("chart").onmouseover = hover;

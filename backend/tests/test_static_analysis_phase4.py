@@ -318,3 +318,40 @@ def test_method_defined_nowhere_in_the_hierarchy_stays_unresolved(tmp_path):
         "top.py": "from base import A\nclass C:\n    def run(self):\n        a = A()\n        a.missing()\n"})
     assert not [t for _, _, t, _ in edges(a, "CALLS") if t.endswith("missing")]
     assert [u for u in a.unresolved if u.target_id.endswith("A.missing")]
+
+
+# --------------------------------------------------------------------------- property-style handlers (el.onclick = ...)
+def test_property_handlers_link_elements_to_functions(tmp_path):
+    a = js(tmp_path, '''const $ = (s) => document.querySelector(s);
+function named() {}
+function inner() {}
+function other() {}
+$("#go").onclick = () => { inner(); };
+document.getElementById("out").onchange = named;
+const btn = document.getElementById("go");
+btn.onmouseover = other;
+''')
+    trig = {(s.split(":", 2)[2], t.split(":", 2)[2], k) for s, _, t, k in edges(a, "TRIGGERS")}
+    assert ("#go", "inner", "inferred") in trig            # anonymous handler -> what it calls
+    assert ("#out", "named", "detected") in trig           # named handler
+    assert ("#go", "other", "detected") in trig            # element held in a variable
+
+
+def test_property_handlers_on_unknown_elements_or_non_event_properties_are_ignored(tmp_path):
+    a = js(tmp_path, '''function f() {}
+const made = document.createElement("div");
+made.onclick = f;
+document.getElementById("go").once = f;
+document.getElementById("go").onlinestatus = f;
+const sel = "#go";
+document.querySelector(sel).onclick = f;
+''')
+    assert not edges(a, "TRIGGERS")
+
+
+def test_repomind_own_ui_handlers_are_now_linked(tmp_path):
+    """RepoMind's UI uses `$("#go").onclick = ...` everywhere; before this fix it had no UI entry points."""
+    svc = AnalysisService(Settings(workspace_dir=tmp_path / "ws", log_level="WARNING"))
+    a = svc.analyze(str(BACKEND / "repomind" / "api"))
+    triggers = [r for r in a.relationships if r.type.value == "TRIGGERS"]
+    assert {r.source_id.split(":", 2)[2] for r in triggers} >= {"#go", "#chatform", "#diffGo"}

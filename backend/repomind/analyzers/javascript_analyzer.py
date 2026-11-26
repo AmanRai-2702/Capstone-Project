@@ -352,6 +352,10 @@ class JavaScriptAnalyzer(BaseAnalyzer):
                 key = f"{cls_name.text.decode('utf-8')}.{name_node.text.decode('utf-8')}"
                 new_func_id = declared_functions.get(key, new_func_id)
 
+        # el.onclick = handler
+        if node.type == "assignment_expression":
+            self._handle_property_handler(node, rel_path, html_path, declared_functions, var_to_dom, get_snippet, result)
+
         # Inspect call expressions
         if node.type == "call_expression":
             self._handle_call(
@@ -848,6 +852,40 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         elem_id = f"html:{html_path}:{dom_selector}"
         handler_arg = args_node.named_children[1]
 
+        self._link_event_handler(elem_id, handler_arg, declared_functions, rel_path, loc, snippet, result)
+
+    # Real DOM event names, so `el.once = x` or `el.online = y` is not mistaken for a handler.
+    _DOM_EVENTS = frozenset((
+        "click dblclick contextmenu mousedown mouseup mouseover mouseout mouseenter mouseleave mousemove wheel "
+        "keydown keyup keypress input change submit reset select focus blur focusin focusout load unload error "
+        "scroll resize drag dragstart dragend dragover dragenter dragleave drop touchstart touchend touchmove "
+        "touchcancel pointerdown pointerup pointermove pointerenter pointerleave toggle copy cut paste "
+        "animationend transitionend play pause ended hashchange popstate beforeunload message").split())
+
+    def _handle_property_handler(self, node, rel_path, html_path, declared_functions, var_to_dom, get_snippet, result) -> None:
+        """`$("#go").onclick = async () => {...}`, `form.onsubmit = handleLogin`: an event handler assigned
+        to a DOM property. The element must be identifiable (a known variable or a literal-selector lookup);
+        anything else (`btn.onclick = f` where btn came from createElement) is not linked."""
+        left, right = node.child_by_field_name("left"), node.child_by_field_name("right")
+        if left is None or right is None or left.type != "member_expression":
+            return
+        prop, obj = left.child_by_field_name("property"), left.child_by_field_name("object")
+        if prop is None or obj is None or not prop.text.decode("utf-8").startswith("on") or prop.text.decode("utf-8")[2:] not in self._DOM_EVENTS:
+            return
+        selector = None
+        if obj.type == "identifier":
+            selector = var_to_dom.get(obj.text.decode("utf-8"))
+        elif obj.type == "call_expression":
+            selector = self._extract_dom_selector_from_node(obj)
+        if not selector:
+            return
+        loc = SourceLocation(file_path=rel_path, start_line=node.start_point[0] + 1, end_line=node.end_point[0] + 1)
+        self._link_event_handler(f"html:{html_path}:{selector}", right, declared_functions, rel_path, loc,
+                                 get_snippet(loc.start_line, loc.end_line), result)
+
+    def _link_event_handler(self, elem_id, handler_arg, declared_functions, rel_path, loc, snippet, result) -> None:
+        """TRIGGERS edges from an element to what its handler runs: a named function (detected), or every
+        function an anonymous callback calls (inferred). Shared by addEventListener and `el.onclick = ...`."""
         # Case 1: Direct identifier handler: addEventListener("submit", handleLogin)
         if handler_arg.type == "identifier":
             fn_name = handler_arg.text.decode("utf-8")

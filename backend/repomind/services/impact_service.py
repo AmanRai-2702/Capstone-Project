@@ -28,12 +28,12 @@ import re
 from collections import deque
 
 from repomind.graph import RepositoryGraph
-from repomind.graph.repository_graph import FLOW_EDGES
+from repomind.graph.repository_graph import CONSTRUCTS, FLOW_EDGES
 from repomind.models import RelationType
 from repomind.models.impact import ImpactedComponent, ImpactHop, ImpactReport
 
 TEST_FILE = re.compile(r"(^|/)(tests?|__tests__|spec)/|(^|/)test_[^/]*\.py$|\.(test|spec)\.[jt]sx?$", re.I)
-FLOW_TYPES = {t.value for t in FLOW_EDGES}
+FLOW_TYPES = {t.value for t in FLOW_EDGES} | {CONSTRUCTS}
 
 
 class ImpactError(ValueError):
