@@ -8,22 +8,23 @@
    "html": 18
   },
   "entities": 326,
-  "relationships": 385,
+  "relationships": 401,
   "relationships_by_type": {
    "CONTAINS": 197,
    "REFERENCES": 17,
-   "IMPORTS": 52,
+   "IMPORTS": 54,
    "INHERITS": 3,
-   "CALLS": 66,
-   "DATA_FLOW": 8,
+   "CALLS": 77,
+   "DATA_FLOW": 11,
    "READS_STATE": 4,
    "RETURNS": 2,
    "HANDLES": 35,
    "REQUESTS": 1
   },
   "relationships_by_kind": {
-   "detected": 306,
-   "inferred": 79
+   "detected": 308,
+   "inferred": 82,
+   "heuristic": 11
   },
   "unresolved": 322,
   "unresolved_by_reason": {
@@ -34,8 +35,8 @@
    "ignored_directory": 1,
    "binary_file": 1
   },
-  "analyze_seconds": 0.46,
-  "graph_seconds": 0.01,
+  "analyze_seconds": 0.28,
+  "graph_seconds": 0.003,
   "unresolved_non_external": [],
   "python": {
    "census_definitions": 135,
@@ -70,14 +71,14 @@
    "css": 2
   },
   "entities": 1825,
-  "relationships": 2728,
+  "relationships": 2928,
   "relationships_by_type": {
    "CONTAINS": 1423,
    "REFERENCES": 15,
-   "IMPORTS": 217,
+   "IMPORTS": 219,
    "RETURNS": 65,
-   "CALLS": 546,
-   "DATA_FLOW": 28,
+   "CALLS": 743,
+   "DATA_FLOW": 29,
    "HANDLES": 220,
    "USES": 84,
    "READS_STATE": 61,
@@ -85,9 +86,9 @@
    "STYLES": 33
   },
   "relationships_by_kind": {
-   "detected": 2227,
-   "inferred": 493,
-   "heuristic": 8
+   "detected": 2229,
+   "inferred": 494,
+   "heuristic": 205
   },
   "unresolved": 708,
   "unresolved_by_reason": {
@@ -102,8 +103,8 @@
    "binary_file": 8,
    "sensitive_file": 1
   },
-  "analyze_seconds": 2.18,
-  "graph_seconds": 0.23,
+  "analyze_seconds": 5.83,
+  "graph_seconds": 0.14,
   "unresolved_non_external": [
    "dynamic_reference: examples/tutorial/flaskr/templates/base.html -REFERENCES-> examples/tutorial/flaskr/templates/{{ url_for('static', filename='style.css') }}",
    "unresolved_target: Flask.create_jinja_environment -CALLS-> App.jinja_environment",
@@ -142,7 +143,7 @@
    "entry_points": 141,
    "nodes": 1825
   },
-  "peak_python_heap_mb": 32.5
+  "peak_python_heap_mb": 33.2
  },
  {
   "id": "flask-javascript-example",
@@ -170,8 +171,8 @@
   },
   "analysis_errors": [],
   "skipped_files": {},
-  "analyze_seconds": 0.04,
-  "graph_seconds": 0.001,
+  "analyze_seconds": 0.03,
+  "graph_seconds": 0.0,
   "unresolved_non_external": [],
   "python": {
    "census_definitions": 7,
@@ -206,19 +207,19 @@
    "html": 6
   },
   "entities": 141,
-  "relationships": 170,
+  "relationships": 172,
   "relationships_by_type": {
    "CONTAINS": 95,
    "REFERENCES": 5,
    "HANDLES": 12,
-   "IMPORTS": 10,
+   "IMPORTS": 12,
    "CALLS": 23,
    "RETURNS": 1,
    "READS_STATE": 2,
    "STYLES": 22
   },
   "relationships_by_kind": {
-   "detected": 144,
+   "detected": 146,
    "inferred": 26
   },
   "unresolved": 58,
@@ -228,8 +229,8 @@
   },
   "analysis_errors": [],
   "skipped_files": {},
-  "analyze_seconds": 0.11,
-  "graph_seconds": 0.003,
+  "analyze_seconds": 0.1,
+  "graph_seconds": 0.002,
   "unresolved_non_external": [
    "dynamic_reference: flaskr/templates/base.html -REFERENCES-> flaskr/templates/{{ url_for('static', filename='style.css') }}"
   ],
@@ -264,10 +265,10 @@
    "python": 40,
    "html": 3
   },
-  "entities": 232,
-  "relationships": 460,
+  "entities": 234,
+  "relationships": 474,
   "relationships_by_type": {
-   "IMPORTS": 71,
+   "IMPORTS": 85,
    "CONTAINS": 152,
    "USES": 13,
    "RETURNS": 23,
@@ -277,7 +278,7 @@
    "HANDLES": 23
   },
   "relationships_by_kind": {
-   "detected": 293,
+   "detected": 307,
    "inferred": 167
   },
   "unresolved": 415,
@@ -289,8 +290,8 @@
    "app/api/deps.py: syntax error at line 36: multiple exception types must be parenthesized"
   ],
   "skipped_files": {},
-  "analyze_seconds": 0.54,
-  "graph_seconds": 0.012,
+  "analyze_seconds": 0.43,
+  "graph_seconds": 0.006,
   "unresolved_non_external": [
    "unresolved_target: read_items -CALLS-> SessionDep.exec",
    "unresolved_target: read_item -CALLS-> SessionDep.get",
@@ -327,9 +328,9 @@
   },
   "graph": {
    "entry_points": 21,
-   "nodes": 232
+   "nodes": 234
   },
-  "peak_python_heap_mb": 6.6
+  "peak_python_heap_mb": 6.7
  },
  {
   "id": "fastapi-fullstack",
@@ -340,11 +341,11 @@
    "html": 4,
    "css": 1
   },
-  "entities": 422,
-  "relationships": 487,
+  "entities": 424,
+  "relationships": 501,
   "relationships_by_type": {
    "REFERENCES": 1,
-   "IMPORTS": 71,
+   "IMPORTS": 85,
    "CONTAINS": 164,
    "USES": 13,
    "RETURNS": 23,
@@ -354,7 +355,7 @@
    "HANDLES": 23
   },
   "relationships_by_kind": {
-   "detected": 316,
+   "detected": 330,
    "inferred": 171
   },
   "unresolved": 475,
@@ -370,8 +371,8 @@
    "sensitive_file": 2,
    "binary_file": 14
   },
-  "analyze_seconds": 0.53,
-  "graph_seconds": 0.006,
+  "analyze_seconds": 1.67,
+  "graph_seconds": 0.005,
   "unresolved_non_external": [
    "asset_not_analysed: frontend/index.html -REFERENCES-> vite.svg",
    "asset_not_analysed: frontend/index.html -REFERENCES-> assets/images/favicon.png"
@@ -395,9 +396,9 @@
   },
   "graph": {
    "entry_points": 21,
-   "nodes": 422
+   "nodes": 424
   },
-  "peak_python_heap_mb": 7.8
+  "peak_python_heap_mb": 7.9
  },
  {
   "id": "vanilla-web-projects",
@@ -409,40 +410,36 @@
    "css": 21
   },
   "entities": 829,
-  "relationships": 1386,
+  "relationships": 1382,
   "relationships_by_type": {
-   "REFERENCES": 163,
+   "REFERENCES": 159,
    "CONTAINS": 696,
    "CALLS": 100,
    "TRIGGERS": 55,
    "STYLES": 372
   },
   "relationships_by_kind": {
-   "detected": 1272,
+   "detected": 1274,
    "inferred": 105,
-   "heuristic": 9
+   "heuristic": 3
   },
-  "unresolved": 19,
+  "unresolved": 12,
   "unresolved_by_reason": {
    "external_api": 7,
-   "dom_selector_unmatched": 9,
    "no_matching_endpoint": 2,
-   "unresolved_target": 1
+   "dom_selector_unmatched": 3
   },
   "analysis_errors": [],
   "skipped_files": {
    "ignored_directory": 1,
    "binary_file": 49
   },
-  "analyze_seconds": 0.79,
-  "graph_seconds": 0.019,
+  "analyze_seconds": 0.61,
+  "graph_seconds": 0.032,
   "unresolved_non_external": [
    "external_api: getRandomUser -REQUESTS-> https://randomuser.me/api",
    "external_api: calculate -REQUESTS-> https://open.exchangerate-api.com/v6/latest",
-   "dom_selector_unmatched: showError -REFERENCES-> small",
    "external_api: getPosts -REQUESTS-> https://jsonplaceholder.typicode.com/posts?_limit={limit}&_page={page}",
-   "dom_selector_unmatched: filterPosts -REFERENCES-> .post-title",
-   "dom_selector_unmatched: filterPosts -REFERENCES-> .post-body",
    "no_matching_endpoint: searchSongs -REQUESTS-> {api_u_r_l}/suggest/{term}",
    "external_api: getMoreSongs -REQUESTS-> https://cors-anywhere.herokuapp.com/{url}",
    "no_matching_endpoint: getLyrics -REQUESTS-> {api_u_r_l}/v1/{artist}/{song_title}",
@@ -451,7 +448,7 @@
    "external_api: getRandomMeal -REQUESTS-> https://www.themealdb.com/api/json/v1/1/random.php",
    "dom_selector_unmatched: music-player/script.js -REFERENCES-> #currTime",
    "dom_selector_unmatched: music-player/script.js -REFERENCES-> #durTime",
-   "unresolved_target: .status -TRIGGERS-> addToCart"
+   "dom_selector_unmatched: speech-text-reader/script.js -REFERENCES-> main"
   ],
   "javascript": {
    "census_definitions": 103,

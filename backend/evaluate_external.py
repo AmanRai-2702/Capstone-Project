@@ -200,7 +200,7 @@ def robustness(ids: list[str]) -> list[dict]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", choices=["clone", "robustness", "sample", "retrieval", "qa"])
+    ap.add_argument("command", choices=["clone", "robustness", "sample", "retrieval", "qa", "impact"])
     ap.add_argument("ids", nargs="*")
     args = ap.parse_args()
     if args.command == "clone":

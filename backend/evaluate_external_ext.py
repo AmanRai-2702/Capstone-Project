@@ -174,7 +174,86 @@ def run(command: str, ids: list[str]) -> int:
         return sample(ids)
     if command == "retrieval":
         return retrieval(ids)
+    if command == "impact":
+        return impact_external(ids)
     if command == "qa":
         import evaluate_external_qa as qa
         return qa.run(ids)
     return 1
+
+
+# ------------------------------------------------------------------ impact: direct callers vs an independent ast census
+def _callers_census(root: Path, py_files: list[str]):
+    """{function name: set of (file, qualified enclosing function)} for every Call to a name; plus the module-level
+    function definitions (file, name). Independent of RepoMind's own call resolution (plain ast)."""
+    callers = defaultdict(set)
+    defs = defaultdict(set)                     # name -> {(file, kind)}
+    for rel in py_files:
+        try:
+            tree = ast.parse((root / rel).read_text(encoding="utf-8", errors="replace"))
+        except (SyntaxError, ValueError):
+            continue
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                defs[node.name].add(rel)
+
+        def walk(node, scope):
+            for child in ast.iter_child_nodes(node):
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    walk(child, scope + [child.name])
+                elif isinstance(child, ast.ClassDef):
+                    walk(child, scope + [child.name])
+                else:
+                    if isinstance(child, ast.Call):
+                        f = child.func
+                        name = f.id if isinstance(f, ast.Name) else (f.attr if isinstance(f, ast.Attribute) else None)
+                        if name and scope:
+                            callers[name].add((rel, ".".join(scope)))
+                    walk(child, scope)
+        walk(tree, [])
+    return callers, defs
+
+
+def impact_external(ids: list[str]) -> int:
+    from repomind.services.impact_service import ImpactService
+    rng = random.Random(8)
+    rows = []
+    for tid in ids or ["flask-tutorial", "microblog", "fastapi-backend", "flask-lib"]:
+        t = TARGETS[tid]
+        root = target_path(t)
+        a = AnalysisService(settings()).analyze(str(root))
+        graph = RepositoryGraph.from_analysis(a)
+        svc = ImpactService(graph, a.unresolved)
+        py = [e.qualified_name for e in a.entities if e.type.value == "file" and e.language.value == "python" and e.metadata.get("category") == "source"]
+        callers, defs = _callers_census(root, py)
+        cands = sorted(n for n, files in defs.items() if len(files) == 1 and not n.startswith("_") and len({c for c in callers.get(n, ())}) >= 2)
+        # a name defined ONCE at module level and never as a method/nested function elsewhere keeps the census unambiguous
+        meth = {e.name for e in a.entities if e.type.value == "method"}
+        cands = [n for n in cands if n not in meth]
+        rng.shuffle(cands)
+        for name in cands[:6]:
+            (dfile,) = defs[name]
+            target = f"python:{dfile}:{name}"
+            if not graph.has_node(target):
+                continue
+            # Compare (file, innermost function name) on both sides. Callers only: a DATA_FLOW / READS_STATE dependent is
+            # real impact but not a call site. Recursion and same-named calls inside the target itself are not callers.
+            exp_keys = {(f, q.split(".")[-1]) for f, q in callers[name] if q.split(".")[-1] != name}
+            report = svc.analyze_impact(target)
+            direct_c = [c for c in report.direct if c.type in ("function", "method") and c.chain and c.chain[0].relation == "CALLS"]
+            direct_keys = {(graph.get_entity(c.entity_id).location.file_path, graph.get_entity(c.entity_id).name) for c in direct_c
+                           if graph.get_entity(c.entity_id) and graph.get_entity(c.entity_id).location}
+            direct = direct_keys
+            exp_ids = exp_keys
+            hit = exp_ids & direct
+            rows.append({"target": tid, "function": name, "expected_callers": len(exp_ids), "reported_direct": len(direct), "correct": len(hit),
+                         "precision": round(len(hit) / len(direct), 3) if direct else 1.0, "recall": round(len(hit) / len(exp_ids), 3),
+                         "missed": sorted(f"{f.split('/')[-1]}:{n}" for f, n in exp_ids - direct)[:4], "extra": sorted(f"{f.split('/')[-1]}:{n}" for f, n in direct - exp_ids)[:4],
+                         "reported_by_kind": {k: sum(1 for c in direct_c if c.chain[0].kind == k) for k in ("detected", "inferred", "heuristic")}})
+    tp = sum(r["correct"] for r in rows); rep = sum(r["reported_direct"] for r in rows); exp = sum(r["expected_callers"] for r in rows)
+    summary = {"functions": len(rows), "micro_precision": round(tp / rep, 3) if rep else None, "micro_recall": round(tp / exp, 3) if exp else None}
+    (DATA / "phase8_impact_external.json").write_text(json.dumps({"summary": summary, "rows": rows}, indent=1), encoding="utf-8")
+    for r in rows:
+        print(f"{r['target'][:16]:16} {r['function'][:34]:34} exp {r['expected_callers']:2} rep {r['reported_direct']:2} P {r['precision']:.2f} R {r['recall']:.2f}  missed {r['missed'][:2]}  extra {r['extra'][:2]}")
+    print(summary)
+    return 0

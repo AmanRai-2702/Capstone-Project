@@ -100,6 +100,12 @@ class Retriever:
         self._file_cache: dict[str, list[str]] = {}
         self.index = build_index(analysis, graph, retrieval_mode, embedding_model, cache_dir)
         self._by_id = {e.id: e for e in analysis.entities}
+        self._children: dict[str, list[Entity]] = {}           # parent id -> entities directly inside it
+        for e in analysis.entities:
+            if e.parent_id:
+                self._children.setdefault(e.parent_id, []).append(e)
+        self._lower_names = {e.id: (e.id.lower(), (e.qualified_name or "").lower(), (e.name or "").lower())
+                             for e in analysis.entities}
         self._entity_tokens = {
             e.id: split_identifier(e.name) | split_identifier(e.qualified_name)
             for e in analysis.entities
@@ -185,9 +191,10 @@ class Retriever:
         scored: list[tuple[float, Entity]] = []
         for e in self.analysis.entities:
             score = 0.0
-            for text, bonus in ((e.id, 15), (e.qualified_name, 12), (e.name, 10)):
-                t = text.lower()
-                if len(t) >= 3 and re.search(rf"(?<![a-z0-9_]){re.escape(t)}(?![a-z0-9_])", q_lower):
+            for t, bonus in zip(self._lower_names[e.id], (15, 12, 10)):
+                # A plain substring test is ~100x cheaper than a regex: only names that occur at all get the
+                # word-boundary check (this loop runs once per entity per question, so it dominated large repos).
+                if len(t) >= 3 and t in q_lower and re.search(rf"(?<![a-z0-9_]){re.escape(t)}(?![a-z0-9_])", q_lower):
                     score = max(score, bonus)
             toks = self._entity_tokens[e.id] - STOPWORDS
             overlap = len(q_tokens & toks)
@@ -518,17 +525,19 @@ class Retriever:
         for top, files in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:max_groups]:
             names = []
             for f in sorted(files, key=lambda x: x.qualified_name):
-                defined = [x for x in self.analysis.entities if x.parent_id == f.id
-                           and x.type.value in ("class", "function", "api_endpoint")]
+                defined = [x for x in self._children.get(f.id, ()) if x.type.value in ("class", "function", "api_endpoint")]
                 names.append(f"`{f.qualified_name}`"
                              + (f" ({', '.join(d.name for d in defined[:max_names])})" if defined else ""))
             facts.append(Fact(f"`{top}` holds {len(files)} source file(s): " + "; ".join(names[:6])
                               + (f"; and {len(names) - 6} more" if len(names) > 6 else "")))
         return facts
 
-    def _endpoint_facts(self) -> list[Fact]:
+    def _endpoint_facts(self, limit: int = 25) -> list[Fact]:
         facts = []
-        for ep in sorted((e for e in self.analysis.entities if e.type.value == "api_endpoint"), key=lambda e: e.id):
+        endpoints = sorted((e for e in self.analysis.entities if e.type.value == "api_endpoint"), key=lambda e: e.id)
+        # Large repositories have hundreds of endpoints: describe the best connected ones and say how many were left out.
+        shown = sorted(sorted(endpoints, key=lambda e: -self.graph.g.degree(e.id))[:limit], key=lambda e: e.id)
+        for ep in shown:
             handlers = [x["source"] for x in self.graph.incoming(ep.id, [RelationType.HANDLES])]
             clients = [x["source"] for x in self.graph.incoming(ep.id, [RelationType.REQUESTS])]
             text = f"{self._label(ep.id)}"
@@ -536,11 +545,17 @@ class Retriever:
             text += (" and is called from " + ", ".join(self._label(c) for c in clients)) if clients else " and no client in the repository calls it"
             cite, snip = self._entity_cite(ep)
             facts.append(Fact(text, cite, snip))
+        if len(endpoints) > len(shown):
+            facts.append(Fact(f"{len(endpoints) - len(shown)} further API endpoint(s) are not listed here (showing the {len(shown)} best connected of {len(endpoints)})"))
         return facts
 
-    def _entry_flow_facts(self) -> list[Fact]:
+    def _entry_flow_facts(self, limit: int = 10) -> list[Fact]:
         flow, facts = self.graph.flow_view(), []
-        for entry in self.graph.entry_points():
+        entries = self.graph.entry_points()
+        busiest = sorted(sorted(entries, key=lambda n: -flow.out_degree(n))[:limit])      # reachability only for these
+        if len(entries) > len(busiest):
+            facts.append(Fact(f"{len(entries)} entry points exist; flows are summarised for the {len(busiest)} with the most outgoing links"))
+        for entry in busiest:
             reach = nx.descendants(flow, entry)
             sinks = sorted(n for n in reach if flow.out_degree(n) == 0)
             if reach:

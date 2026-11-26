@@ -1,0 +1,348 @@
+{
+ "summary": {
+  "functions": 21,
+  "micro_precision": 0.984,
+  "micro_recall": 1.0
+ },
+ "rows": [
+  {
+   "target": "flask-tutorial",
+   "function": "create_app",
+   "expected_callers": 2,
+   "reported_direct": 2,
+   "correct": 2,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 0,
+    "inferred": 2,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "flask-tutorial",
+   "function": "get_post",
+   "expected_callers": 2,
+   "reported_direct": 2,
+   "correct": 2,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 2,
+    "inferred": 0,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "flask-tutorial",
+   "function": "init_db",
+   "expected_callers": 2,
+   "reported_direct": 2,
+   "correct": 2,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 1,
+    "inferred": 1,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "flask-tutorial",
+   "function": "get_db",
+   "expected_callers": 16,
+   "reported_direct": 16,
+   "correct": 16,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 1,
+    "inferred": 15,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "microblog",
+   "function": "send_email",
+   "expected_callers": 2,
+   "reported_direct": 2,
+   "correct": 2,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 0,
+    "inferred": 2,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "microblog",
+   "function": "add_to_index",
+   "expected_callers": 2,
+   "reported_direct": 2,
+   "correct": 2,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 0,
+    "inferred": 2,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "microblog",
+   "function": "error_response",
+   "expected_callers": 4,
+   "reported_direct": 6,
+   "correct": 4,
+   "precision": 0.667,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [
+    "handlers.py:internal_error",
+    "handlers.py:not_found_error"
+   ],
+   "reported_by_kind": {
+    "detected": 2,
+    "inferred": 4,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "microblog",
+   "function": "wants_json_response",
+   "expected_callers": 2,
+   "reported_direct": 2,
+   "correct": 2,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 2,
+    "inferred": 0,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "microblog",
+   "function": "bad_request",
+   "expected_callers": 2,
+   "reported_direct": 2,
+   "correct": 2,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 0,
+    "inferred": 2,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "fastapi-backend",
+   "function": "verify_password",
+   "expected_callers": 8,
+   "reported_direct": 8,
+   "correct": 8,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 0,
+    "inferred": 8,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "fastapi-backend",
+   "function": "render_email_template",
+   "expected_callers": 3,
+   "reported_direct": 3,
+   "correct": 3,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 3,
+    "inferred": 0,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "fastapi-backend",
+   "function": "user_authentication_headers",
+   "expected_callers": 2,
+   "reported_direct": 2,
+   "correct": 2,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 1,
+    "inferred": 1,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "fastapi-backend",
+   "function": "generate_reset_password_email",
+   "expected_callers": 2,
+   "reported_direct": 2,
+   "correct": 2,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 0,
+    "inferred": 2,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "fastapi-backend",
+   "function": "get_password_hash",
+   "expected_callers": 5,
+   "reported_direct": 5,
+   "correct": 5,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 0,
+    "inferred": 5,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "fastapi-backend",
+   "function": "random_email",
+   "expected_callers": 28,
+   "reported_direct": 28,
+   "correct": 28,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 0,
+    "inferred": 28,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "flask-lib",
+   "function": "send_from_directory",
+   "expected_callers": 3,
+   "reported_direct": 3,
+   "correct": 3,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 0,
+    "inferred": 3,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "flask-lib",
+   "function": "get_db",
+   "expected_callers": 16,
+   "reported_direct": 16,
+   "correct": 16,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 1,
+    "inferred": 15,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "flask-lib",
+   "function": "stream_with_context",
+   "expected_callers": 4,
+   "reported_direct": 4,
+   "correct": 4,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 1,
+    "inferred": 3,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "flask-lib",
+   "function": "send_file",
+   "expected_callers": 2,
+   "reported_direct": 2,
+   "correct": 2,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 0,
+    "inferred": 2,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "flask-lib",
+   "function": "render_template",
+   "expected_callers": 18,
+   "reported_direct": 18,
+   "correct": 18,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 0,
+    "inferred": 18,
+    "heuristic": 0
+   }
+  },
+  {
+   "target": "flask-lib",
+   "function": "get_post",
+   "expected_callers": 2,
+   "reported_direct": 2,
+   "correct": 2,
+   "precision": 1.0,
+   "recall": 1.0,
+   "missed": [],
+   "extra": [],
+   "reported_by_kind": {
+    "detected": 2,
+    "inferred": 0,
+    "heuristic": 0
+   }
+  }
+ ]
+}
