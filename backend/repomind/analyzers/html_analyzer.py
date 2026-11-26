@@ -81,13 +81,27 @@ class HTMLAnalyzer(BaseAnalyzer):
 
         # Walk AST tracking parent elements that have IDs
         id_ancestor_stack: list[str] = []
+        # Full DOM position of every element (also those that do not become entities), so the CSS matcher
+        # can evaluate `a > b`, `a b` and `:first-child` without guessing about missing ancestors.
+        dom_stack: list[dict] = []                 # ancestors of the element being visited
+        sibling_counters: list[list[int]] = [[0]]  # one counter of element children per open element
+        dom_info: dict[str, tuple[list[dict], dict]] = {}   # entity id -> (ancestor descriptors, own descriptor)
 
         def walk(node: tree_sitter.Node) -> None:
             nonlocal id_ancestor_stack
             pushed_id = None
+            pushed_dom = False
 
             if node.type in ("element", "script_element", "style_element"):
                 tag_name, attrs = self._parse_element_tag_and_attrs(node)
+                counter = sibling_counters[-1]
+                descriptor = {"t": tag_name, "i": attrs.get("id", ""), "c": attrs.get("class", "").split(),
+                              "a": {k: v[:200] for k, v in attrs.items()}, "n": counter[0], "_sib": counter}
+                counter[0] += 1
+                ancestors = list(dom_stack)
+                dom_stack.append(descriptor)
+                sibling_counters.append([0])
+                pushed_dom = True
                 start_line = node.start_point[0] + 1
                 end_line = node.end_point[0] + 1
                 loc = SourceLocation(
@@ -176,6 +190,7 @@ class HTMLAnalyzer(BaseAnalyzer):
                         },
                     )
                     result.add_entity(entity)
+                    dom_info[entity_id] = (ancestors, descriptor)
 
                     # Containment relationship from nearest ancestor with an ID
                     if id_ancestor_stack:
@@ -199,8 +214,19 @@ class HTMLAnalyzer(BaseAnalyzer):
 
             if pushed_id:
                 id_ancestor_stack.pop()
+            if pushed_dom:
+                dom_stack.pop()
+                sibling_counters.pop()
 
         walk(tree.root_node)
+
+        # Sibling counts are only known once the parents are closed: finalise the descriptors now.
+        def finish(d: dict) -> dict:
+            return {"t": d["t"], "i": d["i"], "c": d["c"], "a": d["a"], "n": d["n"], "s": d["_sib"][0]}
+        for entity in result.entities:
+            if entity.id in dom_info:
+                ancestors, own = dom_info[entity.id]
+                entity.metadata["dom"] = {"path": [finish(a) for a in ancestors], "self": finish(own)}
         return result
 
     def _parse_element_tag_and_attrs(self, node: tree_sitter.Node) -> tuple[str, dict[str, str]]:

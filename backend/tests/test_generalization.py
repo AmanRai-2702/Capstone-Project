@@ -56,10 +56,26 @@ def test_function_local_dom_variable_makes_compound_selector_inferred(tmp_path):
     assert not any(sel == "#t.never" for sel, _ in styles)         # no evidence -> no link
 
 
-def test_unsupported_selectors_are_never_guessed(tmp_path):
+def test_combinator_and_pseudo_selectors_match_the_static_dom(tmp_path):
+    css = " ".join([".x .y { color: red }", ".x > .y { color: red }", ".x:hover { color: red }", "a[href] { color: red }"])
     a = _analyze(tmp_path, {
         "p.html": '<link rel="stylesheet" href="s.css"><div id="a" class="x"><span class="y"></span></div>',
-        "s.css": ".x .y { color: red }\n.x > .y { color: red }\n.x:hover { color: red }\na[href] { color: red }",
+        "s.css": css,
+    })
+    styles = {(s.split(":", 2)[2], t.split(":", 2)[2], k) for s, _, t, k in _keys(a, "STYLES")}
+    assert (".x .y", "span@1", "detected") in styles
+    assert (".x > .y", "span@1", "detected") in styles
+    assert (".x:hover", "#a", "inferred") in styles               # state-dependent: possible, not certain
+    assert not any(sel == "a[href]" for sel, _, _ in styles)       # the page has no <a>: nothing to match
+
+
+def test_truly_unsupported_selectors_are_never_guessed(tmp_path):
+    css = " ".join([".y + .z { color: red }", ".y ~ .z { color: red }", ".x:has(.y) { color: red }",
+                    ".y:nth-of-type(1) { color: red }", ".x:made-up { color: red }"])
+    a = _analyze(tmp_path, {
+        "p.html": '<link rel="stylesheet" href="s.css"><div id="a" class="x"><span class="y"></span>'
+                  '<span class="z"></span></div>',
+        "s.css": css,
     })
     assert _keys(a, "STYLES") == set()
 

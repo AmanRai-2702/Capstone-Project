@@ -16,6 +16,7 @@ from repomind.models import (
     SourceLocation,
     make_file_id,
 )
+from . import css_selectors as cs
 from .base import AnalysisResult, BaseAnalyzer
 
 log = logging.getLogger(__name__)
@@ -26,7 +27,8 @@ class CSSAnalyzer(BaseAnalyzer):
     Parses CSS stylesheets using Tree-sitter.
     Extracts:
     - CSS rule selectors (EntityType.CSS_SELECTOR)
-    - STYLES relationships targeting matching HTML elements
+    - STYLES relationships targeting matching HTML elements (compound, descendant/child, attribute and
+      pseudo-class selectors; see css_selectors.py)
     """
 
     def __init__(self):
@@ -72,7 +74,7 @@ class CSSAnalyzer(BaseAnalyzer):
 
             raw_selector = selectors_node.text.decode("utf-8").strip()
             # Split comma-separated selector lists, or handle individual selector
-            individual_selectors = [s.strip() for s in raw_selector.split(",") if s.strip()]
+            individual_selectors = cs.split_top_level(raw_selector)
 
             start_line = node.start_point[0] + 1
             end_line = node.end_point[0] + 1
@@ -124,9 +126,6 @@ class CSSAnalyzer(BaseAnalyzer):
 
         return result
 
-    # tag?, then any number of #id / .class parts:  button.btn  #toast.visible  .message.error
-    _COMPOUND = re.compile(r"^(?P<tag>[A-Za-z][\w-]*)?(?P<rest>(?:[#.][\w-]+)*)$")
-
     def _match_styles(
         self,
         selector_entity: Entity,
@@ -137,38 +136,34 @@ class CSSAnalyzer(BaseAnalyzer):
         result: AnalysisResult,
         dynamic_classes: dict[str, set[str]] | None = None,
     ) -> None:
-        """Match one CSS selector against known HTML element entities.
-
-        Supported: compound selectors of tag / #id / .class parts. Descendant/child combinators,
-        attribute selectors and pseudo-classes are NOT supported and produce no match (never a
-        guess). Match kinds:
-          detected - the element has every required tag/id/class
-          inferred - only classes are missing, and JS is seen adding all of them to that element
+        """Match one CSS selector against known HTML element entities (see css_selectors for the
+        supported syntax). Anything unsupported matches nothing - never a guess. Match kinds:
+          detected - tag/id/classes/attributes/structure all hold in the static HTML
+          inferred - the element matches only in some state (:hover, ::before ...) or only because
+                     JavaScript is seen adding the missing class to it
         """
-        m = self._COMPOUND.match(selector.strip())
-        if not m or not (m["tag"] or m["rest"]):
+        parsed = cs.parse_selector(selector)
+        if parsed is None:
             return
-        tag = (m["tag"] or "").lower()
-        ids = re.findall(r"#([\w-]+)", m["rest"])
-        classes = set(re.findall(r"\.([\w-]+)", m["rest"]))
-        if len(set(ids)) > 1:
+        if len(parsed.parts) == 1 and parsed.parts[0].is_universal and not parsed.parts[0].pseudo_elements:
+            return                                          # bare `*` would "match" the whole page
+        if any(len(set(c.ids)) > 1 for c in parsed.parts):
             return
 
         for elem in html_elements:
             if elem.type != EntityType.HTML_ELEMENT:
                 continue
+            ancestors, own = self._descriptors(elem)
             elem_id = elem.metadata.get("id", "")
-            if tag and elem.metadata.get("tag", "").lower() != tag:
+            extra = frozenset((dynamic_classes or {}).get(elem_id, ())) if elem_id else frozenset()
+            notes: list[str] = []
+            outcome = cs.match(parsed, [*ancestors, own], extra, notes)
+            if outcome == cs.NO:
                 continue
-            if ids and ids[0] != elem_id:
-                continue
-            missing = classes - set(elem.metadata.get("classes", []))
-            if not missing:
+            if outcome == cs.YES:
                 kind, conf = RelationKind.DETECTED, 1.0
-            elif elem_id and missing <= (dynamic_classes or {}).get(elem_id, set()):
-                kind, conf = RelationKind.INFERRED, 0.85
             else:
-                continue
+                kind, conf = RelationKind.INFERRED, 0.85 if set(notes) == {"dynamic"} else 0.8
             result.add_relationship(
                 Relationship(
                     source_id=selector_entity.id,
@@ -179,3 +174,14 @@ class CSSAnalyzer(BaseAnalyzer):
                     evidence=[Evidence(snippet=snippet, location=loc)],
                 )
             )
+
+    @staticmethod
+    def _descriptors(elem: Entity) -> tuple[list[dict], dict]:
+        """(ancestor descriptors, own descriptor) from the DOM info the HTML analyzer stored. Without it
+        (older saved analyses) only the element itself is known: combinators and :first-child cannot match."""
+        dom = elem.metadata.get("dom")
+        if dom:
+            return dom["path"], dom["self"]
+        meta = elem.metadata
+        return [], {"t": meta.get("tag", "").lower(), "i": meta.get("id", ""), "c": list(meta.get("classes", [])),
+                    "a": dict(meta.get("attributes", {})), "n": None, "s": None}
