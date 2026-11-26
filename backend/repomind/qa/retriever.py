@@ -67,6 +67,11 @@ REPO_INTENTS = ("overview", "architecture", "tech", "components", "docs")
 LOCATE_RE = re.compile(r"\b(where is|where are|where's|which files?|find the|locate|implemented|"
                        r"implementation of|defined)\b", re.I)
 VECTOR_MIN_SCORE = 0.12   # cosine similarity below this is treated as "no semantic match"
+# "what happens when THE USER clicks a seat": "the user" is the grammatical subject of the question, not something to
+# look for in the code. Only removed before an action verb, so a real `User` class is still found by "who calls User".
+_ACTOR_RE = re.compile(r"\b(?:the|a|an) users?\b(?=\s+(?:click|clicks|clicked|press|presses|tap|taps|submit|submits|enter|enters|"
+                       r"type|types|select|selects|choose|chooses|open|opens|close|closes|hover|hovers|drag|drags|scroll|scrolls|"
+                       r"log|logs|sign|signs|visit|visits|navigate|navigates|load|loads|upload|uploads|add|adds|remove|removes))", re.I)
 FLOW_RE = re.compile(r"\b(flow|trace|journey|end[- ]to[- ]end|how does|how do|what happens when|"
                      r"walk me through|sequence|lifecycle)\b", re.I)
 
@@ -154,16 +159,25 @@ class Retriever:
         """Hybrid entity linking: exact/token matches from the graph, plus semantic (TF-IDF cosine)
         matches from the vector index. Vector-only hits get a modest weight and are reported, so a
         similarity match is never presented as an exact one."""
+        question = _ACTOR_RE.sub(" ", question)
         seeds = self._graph_link(question, k)
+        # An entity is NAMED by the question only if its id / qualified name / name appears in it (graph score >= 10).
+        # Sharing a word ("user" in "user accounts") is evidence, but not a name: those seeds are reported as unnamed.
+        named = {e.id for sc, e in seeds if sc >= 10}
         present = {e.id for _, e in seeds}
         vector_only: set[str] = set()
         for sim, chunk in self.index.search(question, k=5, min_score=VECTOR_MIN_SCORE):
             ent = self._by_id.get(chunk.entity_id)
-            if ent is not None and ent.id not in present:
+            if ent is None:
+                continue
+            if ent.id in present:
+                # found by name/word match AND by text similarity: two independent signals agree, so it ranks higher
+                seeds = [(sc + 10.0 * sim, e) if e.id == ent.id else (sc, e) for sc, e in seeds]
+            else:
                 seeds.append((2.0 + 10.0 * sim, ent))
                 vector_only.add(ent.id)
         seeds.sort(key=lambda x: (-x[0], x[1].id))
-        return seeds[: k + 3], vector_only
+        return seeds[: k + 3], vector_only | ({e.id for _, e in seeds} - named)
 
     def _graph_link(self, question: str, k: int = 6) -> list[tuple[float, Entity]]:
         q_lower = question.lower()

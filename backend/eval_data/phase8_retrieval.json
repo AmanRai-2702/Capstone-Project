@@ -1,0 +1,53 @@
+{
+ "target": "flask-lib",
+ "chunks": 442,
+ "queries": 200,
+ "all/tfidf": {
+  "n": 200,
+  "MRR": 0.42,
+  "R@1": 0.26,
+  "R@5": 0.64,
+  "R@10": 0.755,
+  "ms_per_query": 0.59
+ },
+ "all/dense": {
+  "n": 200,
+  "MRR": 0.493,
+  "R@1": 0.375,
+  "R@5": 0.645,
+  "R@10": 0.77,
+  "ms_per_query": 60.06
+ },
+ "all/hybrid": {
+  "n": 200,
+  "MRR": 0.518,
+  "R@1": 0.37,
+  "R@5": 0.71,
+  "R@10": 0.83,
+  "ms_per_query": 54.9
+ },
+ "no name leakage/tfidf": {
+  "n": 43,
+  "MRR": 0.136,
+  "R@1": 0.047,
+  "R@5": 0.279,
+  "R@10": 0.395,
+  "ms_per_query": 0.55
+ },
+ "no name leakage/dense": {
+  "n": 43,
+  "MRR": 0.217,
+  "R@1": 0.093,
+  "R@5": 0.395,
+  "R@10": 0.535,
+  "ms_per_query": 54.35
+ },
+ "no name leakage/hybrid": {
+  "n": 43,
+  "MRR": 0.2,
+  "R@1": 0.07,
+  "R@5": 0.372,
+  "R@10": 0.488,
+  "ms_per_query": 52.16
+ }
+}

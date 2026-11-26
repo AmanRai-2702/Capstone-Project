@@ -1,0 +1,463 @@
+{
+ "model": "anthropic/claude-haiku-5.5",
+ "questions": [
+  [
+   "mb-purpose",
+   "microblog",
+   "What is the purpose of this repository?",
+   [
+    "microblog"
+   ],
+   "README.md",
+   "repo"
+  ],
+  [
+   "mb-tech",
+   "microblog",
+   "Which programming languages and frameworks are used?",
+   [
+    "python",
+    "flask"
+   ],
+   null,
+   "repo"
+  ],
+  [
+   "mb-arch",
+   "microblog",
+   "How is the frontend connected to the backend?",
+   [
+    "translate"
+   ],
+   null,
+   "repo"
+  ],
+  [
+   "mb-login",
+   "microblog",
+   "Where is user login implemented?",
+   [
+    "login",
+    "auth/routes.py"
+   ],
+   "app/auth/routes.py",
+   "code"
+  ],
+  [
+   "mb-export",
+   "microblog",
+   "Which function handles the /export_posts endpoint?",
+   [
+    "export_posts"
+   ],
+   "app/main/routes.py",
+   "code"
+  ],
+  [
+   "mb-impact",
+   "microblog",
+   "What breaks if I change User.check_password?",
+   [
+    "login",
+    "verify_password"
+   ],
+   null,
+   "impact"
+  ],
+  [
+   "js-flow",
+   "flask-javascript-example",
+   "Explain how submitting the calculator form works",
+   [
+    "addSubmit"
+   ],
+   null,
+   "flow"
+  ],
+  [
+   "js-add",
+   "flask-javascript-example",
+   "What does the /add endpoint do?",
+   [
+    "add",
+    "views.py"
+   ],
+   "js_example/views.py",
+   "code"
+  ],
+  [
+   "fa-email",
+   "fastapi-backend",
+   "Where is the password reset email generated?",
+   [
+    "generate_reset_password_email",
+    "utils.py"
+   ],
+   "app/utils.py",
+   "code"
+  ],
+  [
+   "fa-user",
+   "fastapi-backend",
+   "Which endpoint creates a new user?",
+   [
+    "create_user"
+   ],
+   "app/api/routes",
+   "code"
+  ],
+  [
+   "fa-tech",
+   "fastapi-backend",
+   "Which languages and frameworks are used?",
+   [
+    "python",
+    "fastapi"
+   ],
+   null,
+   "repo"
+  ],
+  [
+   "fa-impact",
+   "fastapi-backend",
+   "What is the blast radius of changing get_password_hash?",
+   [
+    "create_user"
+   ],
+   null,
+   "impact"
+  ],
+  [
+   "van-form",
+   "vanilla-web-projects",
+   "How does the form validator check the email address?",
+   [
+    "checkEmail"
+   ],
+   "form-validator/script.js",
+   "flow"
+  ],
+  [
+   "van-seat",
+   "vanilla-web-projects",
+   "What happens when the user clicks a seat?",
+   [
+    "updateSelectedCount"
+   ],
+   "movie-seat-booking",
+   "flow"
+  ],
+  [
+   "mb-refuse",
+   "microblog",
+   "How does the payment checkout work?",
+   [],
+   null,
+   "refusal"
+  ]
+ ],
+ "results": {
+  "template/tfidf": [
+   {
+    "id": "mb-purpose",
+    "kind": "repo",
+    "intent": "overview",
+    "provider": "template",
+    "model": "",
+    "grounded": true,
+    "fallback": false,
+    "fallback_reason": "",
+    "facts": 1.0,
+    "cited": true,
+    "valid": true,
+    "hallucinated_file": false,
+    "retrieval_ms": 8.9,
+    "generation_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "answer": "Overview of `microblog`:\n1. The repository documents itself in `README.md` (excerpt)  [README.md:1-5]\n      > # Welcome to Microblog!\n      > This is an example application featured in my [Flask Mega-Tutorial](https://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-i-hello-world). See the tutorial for instructions on how to work with it.\n      > The version of the application featured in this repository corresponds to the 2024 edition of the Flask Mega-Tutorial. You can find the 2018 and 2021 versions of the code [here](https://github.com/miguelgrinberg/microblog-2018). And if for any strange reason you are interested in the original code, dating back to 2012, that is [here](https://github.com/miguelgrinberg/microblog-2012).\n2. Source files: 18 html, 34 python; 254 code entities and 387 relationships were extracted\n3. Python packages declared in `requirements.txt`: aiosmtpd, alembic, atpublic, attrs, Babel, blinker, certifi, charset-normalizer, click, defusedxml, dnspython, elastic-transport, elasticsearch, email-validator, Flask (Flask web framework) and 39 more  [requirements.txt:1-54]\n4. Frameworks and libraries imported by the code: flask (Flask web framework), requests (HTTP client), sqlalchemy (SQLAlchemy ORM)\n5. `app` holds 39 source file(s): `app/__init__.py` (get_locale, create_app); `app/api/__init__.py`; `app/api/auth.py` (verify_password, basic_auth_error, verify_token, token_auth_error); `app/api/errors.py` (error_response, bad_request, handle_exception); `app/api/tokens.py` (get_token, revoke_token); `app/api/users.py` (get_user, get_users, get_followers, get_following, create_user); and 33 more\n6. `migrations` holds 10 source file(s): `migrations/env.py` (run_migrations_offline, run_migrations_online, process_revision_directives); `migrations/versions/2b017edaa91f_add_language_to_posts.py` (upgrade, downgrade); `migrations/versions/37f06a334dbf_new_fields_in_user_model.py` (upgrade, downgrade); `migrations/versions/780739b227a7_posts_table.py` (upgrade, downgrade); `migrations/versions/834b1a697901_user_tokens.py` (upgrade, downgrade); `migrations/versions/ae346256b650_followers.py` (upgrade, downgrade); and 4 more\n7. `(repository root)` holds 3 source file(s): `config.py` (Config); `microblog.py` (make_shell_context); `tests.py` (TestConfig, UserModelCase)\n8. `DELETE /tokens` (api endpoint) is handled by `revoke_token` (python function) and no client in the repository calls it  [app/api/tokens.py:14-14]\n9. `GET /` (api endpoint) is handled by `index` (python function) and no client in the repository calls it  [app/main/routes.py:25-25]\n10. `GET /edit_profile` (api endpoint) is handled by `edit_profile` (python function) and no client in the repository calls it  [app/main/routes.py:97-97]\n11. `GET /explore` (api endpoint) is handled by `explore` (python function) and no client in the repository calls it  [app/main/routes.py:54-54]\n12. `GET /export_posts` (api endpoint) is handled by `export_posts` (python function) and no client in the repository calls it  [app/main/routes.py:219-219]\n13. `GET /index` (api endpoint) is handled by `index` (python function) and no client in the repository calls it  [app/main/routes.py:26-26]\n14. `GET /login` (api endpoint) is handled by `login` (python function) and no client in the repository calls it  [app/auth/routes.py:14-14]\n15. `GET /logout` (api endpoint) is handled by `logout` (python function) and no client in the repository calls it  [app/auth/routes.py:33-33]\n16. `GET /messages` (api endpoint) is handled by `messages` (python function) and no client in the repository calls it  [app/main/routes.py:199-199]\n17. `GET /notifications` (api endpoint) is handled by `notifications` (python function) and no client in the repository calls it  [app/main/routes.py:230-230]\n18. `GET /register` (api endpoint) is handled by `register` (python function) and no client in the repository calls it  [app/auth/routes.py:39-39]\n19. `GET /reset_password/<token>` (api endpoint) is handled by `reset_password` (python function) and no client in the repository calls it  [app/auth/routes.py:72-72]\n20. `GET /reset_password_request` (api endpoint) is handled by `reset_password_request` (python function) and no client in the repository calls it  [app/auth/routes.py:55-55]\n21. `GET /search` (api endpoint) is handled by `search` (python function) and no client in the repository calls it  [app/main/routes.py:165-165]\n22. `GET /send_message/<recipient>` (api endpoint) is handled by `send_message` (python function) and no client in the repository calls it  [app/main/routes.py:181-181]\n23. `GET /user/<username>` (api endpoint) is handled by `user` (python function) and no client in the repository calls it  [app/main/routes.py:71-71]\n24. `GET /user/<username>/popup` (api endpoint) is handled by `user_popup` (python function) and no client in the repository calls it  [app/main/routes.py:89-89]\n25. `GET /users` (api endpoint) is handled by `get_users` (python function) and no client in the repository calls it  [app/api/users.py:16-16]\n26. `GET /users/<int:id>` (api endpoint) is handled by `get_user` (python function) and no client in the repository calls it  [app/api/users.py:10-10]\n27. `GET /users/<int:id>/followers` (api endpoint) is handled by `get_followers` (python function) and no client in the repository calls it  [app/api/users.py:25-25]\n28. `GET /users/<int:id>/following` (api endpoint) is handled by `get_following` (python function) and no client in the repository calls it  [app/api/users.py:35-35]\n29. `POST /` (api endpoint) is handled by `index` (python function) and no client in the repository calls it  [app/main/routes.py:25-25]\n30. `POST /edit_profile` (api endpoint) is handled by `edit_profile` (python function) and no client in the repository calls it  [app/main/routes.py:97-97]\n31. `POST /follow/<username>` (api endpoint) is handled by `follow` (python function) and no client in the repository calls it  [app/main/routes.py:114-114]\n32. `POST /index` (api endpoint) is handled by `index` (python function) and no client in the repository calls it  [app/main/routes.py:26-26]\n33. `POST /login` (api endpoint) is handled by `login` (python function) and no client in the repository calls it  [app/auth/routes.py:14-14]\n34. `POST /register` (api endpoint) is handled by `register` (python function) and no client in the repository calls it  [app/auth/routes.py:39-39]\n35. `POST /reset_password/<token>` (api endpoint) is handled by `reset_password` (python function) and no client in the repository calls it  [app/auth/routes.py:72-72]\n36. `POST /reset_password_request` (api endpoint) is handled by `reset_password_request` (python function) and no client in the repository calls it  [app/auth/routes.py:55-55]\n37. `POST /send_message/<recipient>` (api endpoint) is handled by `send_message` (python function) and no client in the repository calls it  [app/main/routes.py:181-181]\n38. `POST /tokens` (api endpoint) is handled by `get_token` (python function) and no client in the repository calls it  [app/api/tokens.py:6-6]\n39. `POST /translate` (api endpoint) is handled by `translate_text` (python function) and is called from `app/templates/base.html` (html file)  [app/main/routes.py:156-156]\n40. `POST /unfollow/<username>` (api endpoint) is handled by `unfollow` (python function) and no client in the repository calls it  [app/main/routes.py:135-135]\n41. `POST /users` (api endpoint) is handled by `create_user` (python function) and no client in the repository calls it  [app/api/users.py:45-45]\n42. `PUT /users/<int:id>` (api endpoint) is handled by `update_user` (python function) and no client in the repository calls it  [app/api/users.py:64-64]",
+    "correct": true
+   },
+   {
+    "id": "mb-tech",
+    "kind": "repo",
+    "intent": "tech",
+    "provider": "template",
+    "model": "",
+    "grounded": true,
+    "fallback": false,
+    "fallback_reason": "",
+    "facts": 1.0,
+    "cited": true,
+    "valid": true,
+    "hallucinated_file": false,
+    "retrieval_ms": 1.6,
+    "generation_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "answer": "Technologies used in `microblog`:\n1. Source files: 18 html, 34 python; 254 code entities and 387 relationships were extracted\n2. Python packages declared in `requirements.txt`: aiosmtpd, alembic, atpublic, attrs, Babel, blinker, certifi, charset-normalizer, click, defusedxml, dnspython, elastic-transport, elasticsearch, email-validator, Flask (Flask web framework) and 39 more  [requirements.txt:1-54]\n3. Frameworks and libraries imported by the code: flask (Flask web framework), requests (HTTP client), sqlalchemy (SQLAlchemy ORM)\n4. External packages used (not analysed): __future__, alembic, click, datetime, dotenv, elasticsearch, flask, flask_babel, flask_httpauth, flask_login, flask_mail, flask_migrate, flask_moment, flask_sqlalchemy, flask_wtf, hashlib, json, jwt, langdetect, logging, logging.config, logging.handlers, os, redis, requests, rq, secrets, sqlalchemy, sqlalchemy.orm, sys, threading, time, typing, unittest, urllib.parse, werkzeug.exceptions, werkzeug.http, werkzeug.security, wtforms, wtforms.validators",
+    "correct": true
+   },
+   {
+    "id": "mb-arch",
+    "kind": "repo",
+    "intent": "architecture",
+    "provider": "template",
+    "model": "",
+    "grounded": true,
+    "fallback": false,
+    "fallback_reason": "",
+    "facts": 1.0,
+    "cited": true,
+    "valid": true,
+    "hallucinated_file": false,
+    "retrieval_ms": 10.9,
+    "generation_ms": 0.1,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "answer": "Architecture overview of `microblog`:\n1. Source files: 18 html, 34 python; 254 code entities and 387 relationships were extracted\n2. `app` holds 39 source file(s): `app/__init__.py` (get_locale, create_app); `app/api/__init__.py`; `app/api/auth.py` (verify_password, basic_auth_error, verify_token, token_auth_error); `app/api/errors.py` (error_response, bad_request, handle_exception); `app/api/tokens.py` (get_token, revoke_token); `app/api/users.py` (get_user, get_users, get_followers, get_following, create_user); and 33 more\n3. `migrations` holds 10 source file(s): `migrations/env.py` (run_migrations_offline, run_migrations_online, process_revision_directives); `migrations/versions/2b017edaa91f_add_language_to_posts.py` (upgrade, downgrade); `migrations/versions/37f06a334dbf_new_fields_in_user_model.py` (upgrade, downgrade); `migrations/versions/780739b227a7_posts_table.py` (upgrade, downgrade); `migrations/versions/834b1a697901_user_tokens.py` (upgrade, downgrade); `migrations/versions/ae346256b650_followers.py` (upgrade, downgrade); and 4 more\n4. `(repository root)` holds 3 source file(s): `config.py` (Config); `microblog.py` (make_shell_context); `tests.py` (TestConfig, UserModelCase)\n5. `DELETE /tokens` (api endpoint) is handled by `revoke_token` (python function) and no client in the repository calls it  [app/api/tokens.py:14-14]\n6. `GET /` (api endpoint) is handled by `index` (python function) and no client in the repository calls it  [app/main/routes.py:25-25]\n7. `GET /edit_profile` (api endpoint) is handled by `edit_profile` (python function) and no client in the repository calls it  [app/main/routes.py:97-97]\n8. `GET /explore` (api endpoint) is handled by `explore` (python function) and no client in the repository calls it  [app/main/routes.py:54-54]\n9. `GET /export_posts` (api endpoint) is handled by `export_posts` (python function) and no client in the repository calls it  [app/main/routes.py:219-219]\n10. `GET /index` (api endpoint) is handled by `index` (python function) and no client in the repository calls it  [app/main/routes.py:26-26]\n11. `GET /login` (api endpoint) is handled by `login` (python function) and no client in the repository calls it  [app/auth/routes.py:14-14]\n12. `GET /logout` (api endpoint) is handled by `logout` (python function) and no client in the repository calls it  [app/auth/routes.py:33-33]\n13. `GET /messages` (api endpoint) is handled by `messages` (python function) and no client in the repository calls it  [app/main/routes.py:199-199]\n14. `GET /notifications` (api endpoint) is handled by `notifications` (python function) and no client in the repository calls it  [app/main/routes.py:230-230]\n15. `GET /register` (api endpoint) is handled by `register` (python function) and no client in the repository calls it  [app/auth/routes.py:39-39]\n16. `GET /reset_password/<token>` (api endpoint) is handled by `reset_password` (python function) and no client in the repository calls it  [app/auth/routes.py:72-72]\n17. `GET /reset_password_request` (api endpoint) is handled by `reset_password_request` (python function) and no client in the repository calls it  [app/auth/routes.py:55-55]\n18. `GET /search` (api endpoint) is handled by `search` (python function) and no client in the repository calls it  [app/main/routes.py:165-165]\n19. `GET /send_message/<recipient>` (api endpoint) is handled by `send_message` (python function) and no client in the repository calls it  [app/main/routes.py:181-181]\n20. `GET /user/<username>` (api endpoint) is handled by `user` (python function) and no client in the repository calls it  [app/main/routes.py:71-71]\n21. `GET /user/<username>/popup` (api endpoint) is handled by `user_popup` (python function) and no client in the repository calls it  [app/main/routes.py:89-89]\n22. `GET /users` (api endpoint) is handled by `get_users` (python function) and no client in the repository calls it  [app/api/users.py:16-16]\n23. `GET /users/<int:id>` (api endpoint) is handled by `get_user` (python function) and no client in the repository calls it  [app/api/users.py:10-10]\n24. `GET /users/<int:id>/followers` (api endpoint) is handled by `get_followers` (python function) and no client in the repository calls it  [app/api/users.py:25-25]\n25. `GET /users/<int:id>/following` (api endpoint) is handled by `get_following` (python function) and no client in the repository calls it  [app/api/users.py:35-35]\n26. `POST /` (api endpoint) is handled by `index` (python function) and no client in the repository calls it  [app/main/routes.py:25-25]\n27. `POST /edit_profile` (api endpoint) is handled by `edit_profile` (python function) and no client in the repository calls it  [app/main/routes.py:97-97]\n28. `POST /follow/<username>` (api endpoint) is handled by `follow` (python function) and no client in the repository calls it  [app/main/routes.py:114-114]\n29. `POST /index` (api endpoint) is handled by `index` (python function) and no client in the repository calls it  [app/main/routes.py:26-26]\n30. `POST /login` (api endpoint) is handled by `login` (python function) and no client in the repository calls it  [app/auth/routes.py:14-14]\n31. `POST /register` (api endpoint) is handled by `register` (python function) and no client in the repository calls it  [app/auth/routes.py:39-39]\n32. `POST /reset_password/<token>` (api endpoint) is handled by `reset_password` (python function) and no client in the repository calls it  [app/auth/routes.py:72-72]\n33. `POST /reset_password_request` (api endpoint) is handled by `reset_password_request` (python function) and no client in the repository calls it  [app/auth/routes.py:55-55]\n34. `POST /send_message/<recipient>` (api endpoint) is handled by `send_message` (python function) and no client in the repository calls it  [app/main/routes.py:181-181]\n35. `POST /tokens` (api endpoint) is handled by `get_token` (python function) and no client in the repository calls it  [app/api/tokens.py:6-6]\n36. `POST /translate` (api endpoint) is handled by `translate_text` (python function) and is called from `app/templates/base.html` (html file)  [app/main/routes.py:156-156]\n37. `POST /unfollow/<username>` (api endpoint) is handled by `unfollow` (python function) and no client in the repository calls it  [app/main/routes.py:135-135]\n38. `POST /users` (api endpoint) is handled by `create_user` (python function) and no client in the repository calls it  [app/api/users.py:45-45]\n39. `PUT /users/<int:id>` (api endpoint) is handled by `update_user` (python function) and no client in the repository calls it  [app/api/users.py:64-64]\n40. Entry point `DELETE /tokens` (api endpoint) starts a flow reaching 1 components, ending in `revoke_token` (python function)  [app/api/tokens.py:14-14]\n41. Entry point `GET /` (api endpoint) starts a flow reaching 3 components, ending in `PostForm` (python class), `Post` (python class)  [app/main/routes.py:25-25]\n42. Entry point `GET /edit_profile` (api endpoint) starts a flow reaching 3 components, ending in `EditProfileForm.__init__` (python method)  [app/main/routes.py:97-97]\n43. Entry point `GET /explore` (api endpoint) starts a flow reaching 1 components, ending in `explore` (python function)  [app/main/routes.py:54-54]\n44. Entry point `GET /export_posts` (api endpoint) starts a flow reaching 1 components, ending in `export_posts` (python function)  [app/main/routes.py:219-219]\n45. Entry point `GET /index` (api endpoint) starts a flow reaching 3 components, ending in `PostForm` (python class), `Post` (python class)  [app/main/routes.py:26-26]\n46. Entry point `GET /login` (api endpoint) starts a flow reaching 2 components, ending in `LoginForm` (python class)  [app/auth/routes.py:14-14]\n47. Entry point `GET /logout` (api endpoint) starts a flow reaching 1 components, ending in `logout` (python function)  [app/auth/routes.py:33-33]\n48. Entry point `GET /messages` (api endpoint) starts a flow reaching 1 components, ending in `messages` (python function)  [app/main/routes.py:199-199]\n49. Entry point `GET /notifications` (api endpoint) starts a flow reaching 1 components, ending in `notifications` (python function)  [app/main/routes.py:230-230]\n50. Entry point `GET /register` (api endpoint) starts a flow reaching 4 components, ending in `RegistrationForm` (python class), `User` (python class), `User.set_password` (python method)  [app/auth/routes.py:39-39]\n51. Entry point `GET /reset_password/<token>` (api endpoint) starts a flow reaching 2 components, ending in `ResetPasswordForm` (python class)  [app/auth/routes.py:72-72]\n52. Entry point `GET /reset_password_request` (api endpoint) starts a flow reaching 4 components, ending in `ResetPasswordRequestForm` (python class), `send_email` (python function)  [app/auth/routes.py:55-55]\n53. Entry point `GET /search` (api endpoint) starts a flow reaching 1 components, ending in `search` (python function)  [app/main/routes.py:165-165]\n54. Entry point `GET /send_message/<recipient>` (api endpoint) starts a flow reaching 3 components, ending in `MessageForm` (python class), `Message` (python class)  [app/main/routes.py:181-181]\n55. Entry point `GET /user/<username>` (api endpoint) starts a flow reaching 2 components, ending in `EmptyForm` (python class)  [app/main/routes.py:71-71]\n56. Entry point `GET /user/<username>/popup` (api endpoint) starts a flow reaching 2 components, ending in `EmptyForm` (python class)  [app/main/routes.py:89-89]\n57. Entry point `GET /users` (api endpoint) starts a flow reaching 1 components, ending in `get_users` (python function)  [app/api/users.py:16-16]\n58. Entry point `GET /users/<int:id>` (api endpoint) starts a flow reaching 1 components, ending in `get_user` (python function)  [app/api/users.py:10-10]\n59. Entry point `GET /users/<int:id>/followers` (api endpoint) starts a flow reaching 1 components, ending in `get_followers` (python function)  [app/api/users.py:25-25]\n60. Entry point `GET /users/<int:id>/following` (api endpoint) starts a flow reaching 1 components, ending in `get_following` (python function)  [app/api/users.py:35-35]\n61. Entry point `POST /` (api endpoint) starts a flow reaching 3 components, ending in `PostForm` (python class), `Post` (python class)  [app/main/routes.py:25-25]\n62. Entry point `POST /edit_profile` (api endpoint) starts a flow reaching 3 components, ending in `EditProfileForm.__init__` (python method)  [app/main/routes.py:97-97]\n63. Entry point `POST /follow/<username>` (api endpoint) starts a flow reaching 2 components, ending in `EmptyForm` (python class)  [app/main/routes.py:114-114]\n64. Entry point `POST /index` (api endpoint) starts a flow reaching 3 components, ending in `PostForm` (python class), `Post` (python class)  [app/main/routes.py:26-26]\n65. Entry point `POST /login` (api endpoint) starts a flow reaching 2 components, ending in `LoginForm` (python class)  [app/auth/routes.py:14-14]\n66. Entry point `POST /register` (api endpoint) starts a flow reaching 4 components, ending in `RegistrationForm` (python class), `User` (python class), `User.set_password` (python method)  [app/auth/routes.py:39-39]\n67. Entry point `POST /reset_password/<token>` (api endpoint) starts a flow reaching 2 components, ending in `ResetPasswordForm` (python class)  [app/auth/routes.py:72-72]\n68. Entry point `POST /reset_password_request` (api endpoint) starts a flow reaching 4 components, ending in `ResetPasswordRequestForm` (python class), `send_email` (python function)  [app/auth/routes.py:55-55]\n69. Entry point `POST /send_message/<recipient>` (api endpoint) starts a flow reaching 3 components, ending in `MessageForm` (python class), `Message` (python class)  [app/main/routes.py:181-181]\n70. Entry point `POST /tokens` (api endpoint) starts a flow reaching 1 components, ending in `get_token` (python function)  [app/api/tokens.py:6-6]\n71. Entry point `POST /unfollow/<username>` (api endpoint) starts a flow reaching 2 components, ending in `EmptyForm` (python class)  [app/main/routes.py:135-135]\n72. Entry point `POST /users` (api endpoint) starts a flow reaching 11 components, ending in `error_response` (python function), `User` (python class), `User.avatar` (python method)  [app/api/users.py:45-45]\n73. Entry point `PUT /users/<int:id>` (api endpoint) starts a flow reaching 3 components, ending in `error_response` (python function)  [app/api/users.py:64-64]\n74. Central component: `User` (python class) has 10 direct dependents  [app/models.py:98-279]\n75. Central component: `error_response` (python function) has 6 direct dependents  [app/api/errors.py:6-10]\n76. Central component: `EmptyForm` (python class) has 4 direct dependents  [app/main/forms.py:29-30]\n77. External packages used (not analysed): __future__, alembic, click, datetime, dotenv, elasticsearch, flask, flask_babel, flask_httpauth, flask_login, flask_mail, flask_migrate, flask_moment, flask_sqlalchemy, flask_wtf, hashlib, json, jwt, langdetect, logging, logging.config, logging.handlers, os, redis, requests, rq, secrets, sqlalchemy, sqlalchemy.orm, sys, threading, time, typing, unittest, urllib.parse, werkzeug.exceptions, werkzeug.http, werkzeug.security, wtforms, wtforms.validators\n78. The repository documents itself in `README.md` (excerpt)  [README.md:1-5]\n      > # Welcome to Microblog!\n      > This is an example application featured in my [Flask Mega-Tutorial](https://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-i-hello-world). See the tutorial for instructions on how to work with it.\n      > The version of the application featured in this repository corresponds to the 2024 edition of the Flask Mega-Tutorial. You can find the 2018 and 2021 versions of the code [here](https://github.com/miguelgrinberg/microblog-2018). And if for any strange reason you are interested in the original code, dating back to 2012, that is [here](https://github.com/miguelgrinberg/microblog-2012).",
+    "correct": true
+   },
+   {
+    "id": "mb-login",
+    "kind": "code",
+    "intent": "locate",
+    "provider": "template",
+    "model": "",
+    "grounded": true,
+    "fallback": false,
+    "fallback_reason": "",
+    "facts": 1.0,
+    "cited": true,
+    "valid": true,
+    "hallucinated_file": false,
+    "retrieval_ms": 91.9,
+    "generation_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "answer": "Most relevant code:\n1. `login` (python function) is defined here  [app/auth/routes.py:15-30]\n2. `user` (python function) is defined here  [app/main/routes.py:73-86]\n3. `User` (python class) is defined here  [app/models.py:98-279]\n4. `GET /login` (api endpoint) is defined here  [app/auth/routes.py:14-14]\n5. `POST /login` (api endpoint) is defined here  [app/auth/routes.py:14-14]",
+    "correct": true
+   },
+   {
+    "id": "mb-export",
+    "kind": "code",
+    "intent": "explain",
+    "provider": "template",
+    "model": "",
+    "grounded": true,
+    "fallback": false,
+    "fallback_reason": "",
+    "facts": 1.0,
+    "cited": true,
+    "valid": true,
+    "hallucinated_file": false,
+    "retrieval_ms": 102.1,
+    "generation_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "answer": "About `export_posts` (python function):\n1. `export_posts` (python function) is defined here  [app/main/routes.py:221-227]\n2. It belongs to `app/main/routes.py` (python file)\n3. `export_posts` (python function) is handled by `GET /export_posts` (api endpoint)  [app/main/routes.py:219-219]",
+    "correct": true
+   },
+   {
+    "id": "mb-impact",
+    "kind": "impact",
+    "intent": "impact",
+    "provider": "template",
+    "model": "",
+    "grounded": true,
+    "fallback": false,
+    "fallback_reason": "",
+    "facts": 0.0,
+    "cited": true,
+    "valid": true,
+    "hallucinated_file": false,
+    "retrieval_ms": 108.8,
+    "generation_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "answer": "Changing `User.check_password` (python method) may affect 1 component(s); risk medium (no test file reaches the changed or impacted code).\n1. `UserModelCase.test_password_hashing` (python method) - distance 1, confidence 0.85: UserModelCase.test_password_hashing calls User.check_password [inferred, 0.85]  [tests.py:30-30]",
+    "correct": false
+   },
+   {
+    "id": "js-flow",
+    "kind": "flow",
+    "intent": "locate",
+    "provider": "template",
+    "model": "",
+    "grounded": true,
+    "fallback": false,
+    "fallback_reason": "",
+    "facts": 1.0,
+    "cited": true,
+    "valid": true,
+    "hallucinated_file": false,
+    "retrieval_ms": 16.1,
+    "generation_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "answer": "Most relevant code: (matched by semantic similarity, not by an exact name)\n1. `add` (python function) is defined here  [js_example/views.py:15-18]\n2. `#calc` (html element) is defined here  [js_example/templates/base.html:26-31]\n3. `input@30` (html element) is defined here  [js_example/templates/base.html:30-31]\n4. `addSubmit` (javascript function) is defined here  [js_example/templates/fetch.html:11-19]\n5. `addSubmit` (javascript function) is defined here  [js_example/templates/xhr.html:12-18]",
+    "correct": true
+   },
+   {
+    "id": "js-add",
+    "kind": "code",
+    "intent": "explain",
+    "provider": "template",
+    "model": "",
+    "grounded": true,
+    "fallback": false,
+    "fallback_reason": "",
+    "facts": 1.0,
+    "cited": true,
+    "valid": true,
+    "hallucinated_file": false,
+    "retrieval_ms": 1.5,
+    "generation_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "answer": "About `add` (python function):\n1. `add` (python function) is defined here  [js_example/views.py:15-18]\n2. It belongs to `js_example/views.py` (python file)\n3. `add` (python function) is handled by `POST /add` (api endpoint)  [js_example/views.py:14-14]",
+    "correct": true
+   },
+   {
+    "id": "fa-email",
+    "kind": "code",
+    "intent": "locate",
+    "provider": "template",
+    "model": "",
+    "grounded": true,
+    "fallback": false,
+    "fallback_reason": "",
+    "facts": 1.0,
+    "cited": true,
+    "valid": true,
+    "hallucinated_file": false,
+    "retrieval_ms": 71.2,
+    "generation_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "answer": "Most relevant code: (matched by semantic similarity, not by an exact name)\n1. `generate_reset_password_email` (python function) is defined here  [app/utils.py:70-84]\n2. `POST /reset-password/` (api endpoint) is defined here  [app/api/routes/login.py:77-77]\n3. `recover_password_html_content` (python function) is defined here  [app/api/routes/login.py:105-123]\n4. `test_reset_password` (python function) is defined here  [tests/api/routes/test_login.py:82-110]\n5. `recover_password` (python function) is defined here  [app/api/routes/login.py:54-74]",
+    "correct": true
+   },
+   {
+    "id": "fa-user",
+    "kind": "code",
+    "intent": "explain",
+    "provider": "template",
+    "model": "",
+    "grounded": true,
+    "fallback": false,
+    "fallback_reason": "",
+    "facts": 1.0,
+    "cited": true,
+    "valid": true,
+    "hallucinated_file": false,
+    "retrieval_ms": 9.2,
+    "generation_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "answer": "About `User` (python class):\n1. `User` (python class) is defined here  [app/models.py:51-55]\n2. It belongs to `app/models.py` (python file)\n3. `User` (python class) inherits from `UserBase` (python class)  [app/models.py:51-51]\n4. `User` (python class) is given data produced by `get_password_hash` (python function) [inferred, confidence 0.70]  [app/api/routes/private.py:29-33]\n5. `User` (python class) is given data produced by `random_email` (python function) [inferred, confidence 0.70]  [tests/api/routes/test_login.py:141-141]\n6. `create_user` (python function) returns an instance of `User` (python class)  [app/crud.py:10-17]\n7. `update_user` (python function) uses `User` (python class)  [app/crud.py:20-20]\n8. `update_user` (python function) returns an instance of `User` (python class) [inferred, confidence 0.80]  [app/crud.py:31-31]\n9. `get_user_by_email` (python function) returns an instance of `User` (python class)  [app/crud.py:34-37]\n10. `authenticate` (python function) returns an instance of `User` (python class)  [app/crud.py:45-60]",
+    "correct": true
+   },
+   {
+    "id": "fa-tech",
+    "kind": "repo",
+    "intent": "tech",
+    "provider": "template",
+    "model": "",
+    "grounded": true,
+    "fallback": false,
+    "fallback_reason": "",
+    "facts": 1.0,
+    "cited": true,
+    "valid": true,
+    "hallucinated_file": false,
+    "retrieval_ms": 0.9,
+    "generation_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "answer": "Technologies used in `backend`:\n1. Source files: 3 html, 40 python; 177 code entities and 474 relationships were extracted\n2. Frameworks and libraries imported by the code: fastapi (FastAPI web framework), pydantic (Pydantic data validation), pytest (pytest test framework), sqlalchemy (SQLAlchemy ORM)\n3. External packages used (not analysed): alembic, collections.abc, dataclasses, datetime, emails, fastapi, fastapi.encoders, fastapi.responses, fastapi.routing, fastapi.security, fastapi.testclient, jinja2, jwt, jwt.exceptions, logging, logging.config, os, pathlib, pwdlib, pwdlib.hashers.argon2, pwdlib.hashers.bcrypt, pydantic, pydantic.networks, pydantic_settings, pytest, random, sentry_sdk, sqlalchemy, sqlalchemy.dialects, sqlmodel, sqlmodel.sql.sqltypes, starlette.middleware.cors, string, typing, unittest.mock, uuid, warnings",
+    "correct": true
+   },
+   {
+    "id": "fa-impact",
+    "kind": "impact",
+    "intent": "impact",
+    "provider": "template",
+    "model": "",
+    "grounded": true,
+    "fallback": false,
+    "fallback_reason": "",
+    "facts": 1.0,
+    "cited": true,
+    "valid": true,
+    "hallucinated_file": false,
+    "retrieval_ms": 13.3,
+    "generation_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "answer": "Changing `get_password_hash` (python function) may affect 27 component(s) (showing 15 of 27); risk high (reaches 2 user-facing entry point(s): PATCH /me/password, POST /users/; large blast radius (27 components)). User-facing entry points affected: `PATCH /me/password`, `POST /users/`.\n1. `create_user` (python function) - distance 1, confidence 0.85: create_user calls get_password_hash [inferred, 0.85]  [app/api/routes/private.py:32-32]\n2. `update_password_me` (python function) - distance 1, confidence 0.85: update_password_me calls get_password_hash [inferred, 0.85]  [app/api/routes/users.py:117-117]\n3. `create_user` (python function) - distance 1, confidence 0.85: create_user calls get_password_hash [inferred, 0.85]  [app/crud.py:12-12]\n4. `update_user` (python function) - distance 1, confidence 0.85: update_user calls get_password_hash [inferred, 0.85]  [app/crud.py:25-25]\n5. `test_login_with_argon2_password_keeps_hash` (python function) - distance 1, confidence 0.85: test_login_with_argon2_password_keeps_hash calls get_password_hash [inferred, 0.85]  [tests/api/routes/test_login.py:171-171]\n6. `User` (python class) - distance 1, confidence 0.70: User is given data produced by get_password_hash [inferred, 0.70]  [app/api/routes/private.py:29-33]\n7. `PATCH /me/password` (api endpoint) - distance 2, confidence 0.85: PATCH /me/password is served by update_password_me; update_password_me calls get_password_hash [inferred, 0.85]  [app/api/routes/users.py:103-103]\n8. `POST /users/` (api endpoint) - distance 2, confidence 0.85: POST /users/ is served by create_user; create_user calls get_password_hash [inferred, 0.85]  [app/api/routes/private.py:23-23]\n9. `test_reset_password` (python function) - distance 2, confidence 0.72: test_reset_password calls create_user [inferred, 0.85]; create_user calls get_password_hash [inferred, 0.85]  [tests/api/routes/test_login.py:94-94]\n10. `authenticate` (python function) - distance 2, confidence 0.70: authenticate returns an instance of User; User is given data produced by get_password_hash [inferred, 0.70]  [app/crud.py:45-60]\n11. `get_user_by_email` (python function) - distance 2, confidence 0.70: get_user_by_email returns an instance of User; User is given data produced by get_password_hash [inferred, 0.70]  [app/crud.py:34-37]\n12. `create_random_user` (python function) - distance 2, confidence 0.70: create_random_user returns an instance of User; User is given data produced by get_password_hash [inferred, 0.70]  [tests/utils/user.py:22-27]\n13. `verify_password` (python function) - distance 2, confidence 0.59: verify_password is given data produced by create_user [inferred, 0.70]; create_user calls get_password_hash [inferred, 0.85]  [tests/api/routes/test_login.py:109-109]\n14. `test_login_with_bcrypt_password_upgrades_to_argon2` (python function) - distance 2, confidence 0.59: test_login_with_bcrypt_password_upgrades_to_argon2 calls User [inferred, 0.85]; User is given data produced by get_password_hash [inferred, 0.70]  [tests/api/routes/test_login.py:141-141]\n15. `test_authenticate_user_with_bcrypt_upgrades_to_argon2` (python function) - distance 2, confidence 0.59: test_authenticate_user_with_bcrypt_upgrades_to_argon2 calls User [inferred, 0.85]; User is given data produced by get_password_hash [inferred, 0.70]  [tests/crud/test_user.py:107-107]",
+    "correct": true
+   },
+   {
+    "id": "van-form",
+    "kind": "flow",
+    "intent": "flow",
+    "provider": "template",
+    "model": "",
+    "grounded": true,
+    "fallback": false,
+    "fallback_reason": "",
+    "facts": 1.0,
+    "cited": true,
+    "valid": true,
+    "hallucinated_file": false,
+    "retrieval_ms": 236.7,
+    "generation_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "answer": "Execution flow starting from `#form`: (matched by semantic similarity, not by an exact name)\n1. `#form` (html element) triggers `#form submit handler` (javascript function)  [form-validator/script.js:76-86]\n2. `#form submit handler` (javascript function) calls `checkRequired` (javascript function)  [form-validator/script.js:79-79]\n3. `checkRequired` (javascript function) calls `getFieldName` (javascript function)  [form-validator/script.js:36-36]\n4. `#form submit handler` (javascript function) calls `checkLength` (javascript function)  [form-validator/script.js:80-80]\n5. `checkLength` (javascript function) calls `getFieldName` (javascript function)  [form-validator/script.js:51-51]\n6. `#form submit handler` (javascript function) calls `checkEmail` (javascript function)  [form-validator/script.js:82-82]\n7. `checkEmail` (javascript function) calls `showError` (javascript function)  [form-validator/script.js:27-27]\n8. `checkRequired` (javascript function) calls `showError` (javascript function)  [form-validator/script.js:36-36]\n9. `checkLength` (javascript function) calls `showError` (javascript function)  [form-validator/script.js:49-52]\n10. `checkEmail` (javascript function) calls `showSuccess` (javascript function)  [form-validator/script.js:25-25]\n11. `checkRequired` (javascript function) calls `showSuccess` (javascript function)  [form-validator/script.js:39-39]\n12. `checkLength` (javascript function) calls `showSuccess` (javascript function)  [form-validator/script.js:59-59]",
+    "correct": true
+   },
+   {
+    "id": "van-seat",
+    "kind": "flow",
+    "intent": "flow",
+    "provider": "template",
+    "model": "",
+    "grounded": true,
+    "fallback": false,
+    "fallback_reason": "",
+    "facts": 1.0,
+    "cited": true,
+    "valid": true,
+    "hallucinated_file": false,
+    "retrieval_ms": 225.6,
+    "generation_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "answer": "Execution flow starting from `#show`, `div@36`, `#close`:\n1. `#show` (html element) triggers `#show click handler` (javascript function)  [memory-cards/script.js:128-128]\n2. `div@36` (html element) triggers `.container click handler` (javascript function)  [movie-seat-booking/script.js:60-69]\n3. `.container click handler` (javascript function) calls `updateSelectedCount` (javascript function)  [movie-seat-booking/script.js:67-67]\n4. `updateSelectedCount` (javascript function) calls `setMovieData` (javascript function)  [movie-seat-booking/script.js:30-30]\n5. `#close` (html element) triggers `#close click handler` (javascript function)  [speech-text-reader/script.js:129-131]",
+    "correct": true
+   },
+   {
+    "id": "mb-refuse",
+    "kind": "refusal",
+    "intent": "none",
+    "provider": "template",
+    "model": "",
+    "grounded": false,
+    "fallback": false,
+    "fallback_reason": "",
+    "facts": 1.0,
+    "cited": true,
+    "valid": true,
+    "hallucinated_file": false,
+    "retrieval_ms": 117.9,
+    "generation_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "answer": "I could not find anything in the analysed repository that matches this question. Try naming a function, class, endpoint, file or UI element (e.g. 'handleLogin'), or ask about the repository as a whole (its purpose, main components, technologies or architecture).",
+    "correct": true
+   }
+  ]
+ }
+}

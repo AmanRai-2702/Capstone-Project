@@ -93,6 +93,7 @@ class OpenRouterProvider:
                             timeout=settings.llm_timeout_s, max_retries=1,
                             default_headers={"X-Title": "RepoMind"})
         self._client = client
+        self.last_usage: tuple[int, int] = (0, 0)       # (prompt tokens, completion tokens) of the latest call
 
     # Request construction is separate so tests can inspect exactly what would be sent.
     def build_request(self, context: Context) -> dict:
@@ -112,6 +113,8 @@ class OpenRouterProvider:
             raise
         except Exception as exc:
             raise self._translate(exc) from None      # `from None`: the original may echo request details
+        usage = getattr(response, "usage", None)
+        self.last_usage = (int(getattr(usage, "prompt_tokens", 0) or 0), int(getattr(usage, "completion_tokens", 0) or 0))
         try:
             text = (response.choices[0].message.content or "").strip()
         except (AttributeError, IndexError, TypeError):

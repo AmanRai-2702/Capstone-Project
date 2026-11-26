@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 
 from repomind.config import Settings
 from repomind.graph import RepositoryGraph
@@ -84,10 +85,12 @@ class QAService:
         return f"{self.analysis.name} ({', '.join(f'{n} {l} files' for l, n in sorted(langs.items()))})"
 
     def ask(self, question: str) -> Answer:
+        t_retrieve = time.perf_counter()
         ctx = self.retriever.retrieve(question)
+        retrieval_ms = round((time.perf_counter() - t_retrieve) * 1000, 1)
         st = self.status()
         base = dict(question=question, intent=ctx.intent, provider=self.provider.name, model=st["model"],
-                    requested_provider=st["requested_provider"])
+                    requested_provider=st["requested_provider"], retrieval_ms=retrieval_ms)
         if ctx.empty:
             return Answer(answer=REFUSAL, grounded=False, **base)
         ctx.repo_summary = self._repo_summary()
@@ -97,6 +100,7 @@ class QAService:
         if reason:
             warnings.append(f"Requested provider '{st['requested_provider']}' is unavailable ({reason}); "
                             "showing the offline template answer.")
+        t_generate = time.perf_counter()
         try:
             text = self.provider.generate(ctx)
         except ProviderError as exc:
@@ -121,7 +125,11 @@ class QAService:
                 if unknown:
                     warnings.append("The answer mentions file name(s) that are not in this repository "
                                     f"({', '.join(unknown)}); verify them before relying on the answer.")
+        generation_ms = round((time.perf_counter() - t_generate) * 1000, 1)
+        tokens = getattr(self.provider, "last_usage", (0, 0)) if used is self.provider else (0, 0)
         citations = sorted({f.citation for f in ctx.facts if f.citation})
         return Answer(question=question, intent=ctx.intent, answer=text, grounded=True, citations=citations,
+                      retrieval_ms=retrieval_ms, generation_ms=generation_ms,
+                      prompt_tokens=tokens[0], completion_tokens=tokens[1],
                       entities=ctx.entity_ids, warnings=warnings, provider=used.name, model=model,
                       requested_provider=st["requested_provider"], fallback=fallback, fallback_reason=reason)

@@ -22,6 +22,20 @@ log = logging.getLogger(__name__)
 
 # Standard HTTP methods supported by FastAPI, Flask, Starlette route decorators
 HTTP_METHODS = {"get", "post", "put", "delete", "patch", "options", "head"}
+# Method names that builtins, collections and common libraries define as well: an untyped `x.name()` is far more likely to
+# be one of those than the one repository class that happens to share the name, so we never guess for them.
+COMMON_METHOD_NAMES = frozenset((
+    "get set add remove delete update run start stop close open read write save load clear copy items keys values append "
+    "extend pop push send build create init setup teardown main call name next count index format join split strip find "
+    "filter map sort reset commit rollback flush query execute fetch render handle process parse dump dumps loads json "
+    "validate connect disconnect emit apply submit refresh insert select order group limit first last all one many "
+    "register login logout authenticate configure initialize shutdown wait notify acquire release lock unlock "
+    "serialize deserialize encode decode compile match search replace sub start_response "
+    # builtin dict / list / set / str / bytes / file / Path methods
+    "setdefault popitem fromkeys insert reverse union intersection difference discard issubset issuperset startswith endswith "
+    "lower upper title lstrip rstrip splitlines partition rpartition capitalize casefold center isdigit isalpha isalnum "
+    "readline readlines writelines seek tell truncate exists is_file is_dir mkdir rmdir unlink iterdir read_text write_text "
+    "read_bytes write_bytes resolve with_traceback add_note").split())
 
 
 class PythonASTVisitor(ast.NodeVisitor):
@@ -793,6 +807,29 @@ class PythonASTVisitor(ast.NodeVisitor):
                             type=RelationType.CALLS,
                             kind=RelationKind.INFERRED,
                             confidence=0.8,
+                            evidence=[Evidence(snippet=snippet, location=call_loc)],
+                        )
+                    )
+            root_name = receiver.split(".")[0] if receiver else ""
+            if not handled and not is_self and self.types is not None and receiver \
+                    and root_name not in self.imported_symbols and root_name not in self.module_aliases \
+                    and not any(a == root_name or a.startswith(root_name + ".") for a in self.module_aliases) \
+                    and self._expr_ref(node.func.value) is None:
+                # The receiver's type is unknown (typically the result of an ORM / library call). If exactly ONE class in
+                # the repository defines a method of this name, it is probably that one. Labelled as a guess.
+                owners = self.types.method_owners.get(method_name, [])
+                # not inside the class that defines it: there the receiver is some OTHER object that merely shares the
+                # method name (a delegate, a library loader), never a guess worth making
+                inside_owner = bool(owners) and bool(self.class_stack) and owners[0][1] == self.class_stack[-1]
+                if len(owners) == 1 and len(method_name) >= 6 and method_name not in COMMON_METHOD_NAMES \
+                        and not method_name.startswith("_") and not inside_owner:
+                    self.result.add_relationship(
+                        Relationship(
+                            source_id=self.current_callable_id,
+                            target_id=make_entity_id("python", owners[0][0], f"{owners[0][1]}.{method_name}"),
+                            type=RelationType.CALLS,
+                            kind=RelationKind.HEURISTIC,
+                            confidence=0.5,
                             evidence=[Evidence(snippet=snippet, location=call_loc)],
                         )
                     )

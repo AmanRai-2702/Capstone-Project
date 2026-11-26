@@ -44,6 +44,8 @@ class TypeIndex:
     # module-level `Name = Annotated[Real, ...]` / `Name = Optional[Real]`: Name is an ALIAS, not a class. Value is the
     # real class name, or "" when it is not a repository class we can name (then a variable typed Name is untyped).
     aliases: dict[str, str] = field(default_factory=dict)
+    # method name -> every (file, class) that defines it. Used only for a LABELLED guess when a receiver is untyped.
+    method_owners: dict[str, list[tuple[str, str]]] = field(default_factory=dict)
 
     # ------------------------------------------------------------------ building
     @classmethod
@@ -94,6 +96,9 @@ class TypeIndex:
                 self._collect_class_attrs(path, node)
 
     def _collect_class_attrs(self, path: str, cls_node: ast.ClassDef) -> None:
+        for fn in cls_node.body:
+            if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)) and not (fn.name.startswith("__") and fn.name.endswith("__")):
+                self.method_owners.setdefault(fn.name, []).append((path, cls_node.name))
         found = self.attrs.setdefault((path, cls_node.name), {})
         for stmt in cls_node.body:                                    # dataclass / pydantic style fields
             if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):

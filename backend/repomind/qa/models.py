@@ -84,3 +84,9 @@ class Answer(BaseModel):
     requested_provider: str = ""                    # what the user asked for
     fallback: bool = False                          # True => requested provider failed; template answer shown
     fallback_reason: str = ""                       # machine-readable reason code, e.g. "rate_limit"
+    # Where the time went: retrieval (local, graph + index) versus generation (the provider; for an LLM this is the
+    # network round trip). Tokens are what the provider reported, 0 when it reported nothing (offline template).
+    retrieval_ms: float = 0.0
+    generation_ms: float = 0.0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
