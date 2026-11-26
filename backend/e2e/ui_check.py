@@ -28,7 +28,7 @@ with sync_playwright() as p:
     page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
     page.on("console", lambda m: errors.append(f"console.{m.type}: {m.text}") if m.type == "error" else None)
 
-    page.goto(BASE + "/?location=test_apps/notes_app")
+    page.goto(BASE + "/legacy?location=test_apps/notes_app")
     page.wait_for_function("document.querySelector('#status').textContent.includes('notes_app')", timeout=30000)
     check("repository analysed from the UI", "52 entities" in page.inner_text("#status"), page.inner_text("#status"))
     page.wait_for_function("typeof cy !== 'undefined' && cy.nodes().length > 0")

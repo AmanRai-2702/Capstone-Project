@@ -56,7 +56,7 @@ def test_overview_unknown_repository_is_a_clean_404(client):
 
 # --------------------------------------------------------------------------- the page itself
 def test_page_is_served_and_has_every_element_the_journeys_rely_on(client):
-    html = client.get("/").text
+    html = client.get("/legacy").text
     for element_id in ("loc", "go", "zip", "repoSel", "status", "cy", "level", "langSel", "typeSel", "relList", "minConf", "maxNodes",
                        "nodeSearch", "banner", "q", "chatlog", "chatform", "askBtn", "llmStatus", "chips", "impactBody", "strictRefs",
                        "traceFrom", "traceTo", "traceView", "traceGo", "traceOut", "flowList", "diffText", "diffGo", "diffOut",

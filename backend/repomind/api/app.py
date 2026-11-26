@@ -45,6 +45,7 @@ from repomind.storage import AnalysisStore
 
 log = logging.getLogger("repomind.api")
 STATIC_DIR = Path(__file__).parent / "static"
+FRONTEND_DIST = Path(os.getenv("REPOMIND_FRONTEND_DIST") or Path(__file__).resolve().parents[3] / "frontend" / "dist")
 
 
 @dataclass
@@ -468,15 +469,39 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"file": file, "start": start, "end": min(end, len(lines)), "lines": lines[start - 1:end]}
 
     # ------------------------------------------------------------------ frontend
-    @api.get("/", include_in_schema=False)
-    def index():
+    # The React app (frontend/, built with `npm run build`) is served at "/" when its build exists.
+    # The original single-page UI stays available at "/legacy" and is the fallback when there is no build.
+    react_index = FRONTEND_DIST / "index.html"
+
+    @api.get("/legacy", include_in_schema=False)
+    def legacy_index():
         page = STATIC_DIR / "index.html"
-        if page.exists():
-            return FileResponse(page)
-        return {"service": "RepoMind", "docs": "/docs"}
+        return FileResponse(page) if page.exists() else {"service": "RepoMind", "docs": "/docs"}
 
     if STATIC_DIR.exists():
         api.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+    if react_index.exists():
+        if (FRONTEND_DIST / "assets").exists():
+            api.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="react-assets")
+
+        @api.get("/", include_in_schema=False)
+        def index():
+            return FileResponse(react_index)
+
+        @api.get("/{spa_path:path}", include_in_schema=False)
+        def spa_fallback(spa_path: str):
+            """Client-side routes (/repo/<id>/graph ...) must load the app; unknown API paths stay 404."""
+            if spa_path.startswith(("api/", "docs", "openapi", "static/", "assets/")):
+                raise HTTPException(404, "Not found")
+            candidate = (FRONTEND_DIST / spa_path).resolve()
+            if candidate.is_file() and candidate.is_relative_to(FRONTEND_DIST.resolve()):
+                return FileResponse(candidate)
+            return FileResponse(react_index)
+    else:
+        @api.get("/", include_in_schema=False)
+        def index():
+            return legacy_index()
     return api
 
 

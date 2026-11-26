@@ -68,7 +68,7 @@ with sync_playwright() as p:
     page = browser.new_page(viewport={"width": 1700, "height": 1000})
     page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
     page.on("console", lambda m: errors.append(f"console.{m.type}: {m.text}") if m.type == "error" else None)
-    page.goto(BASE + "/")
+    page.goto(BASE + "/legacy")
 
     # ---------------------------------------------------------------- dashboard
     analyse(page, "test_apps/notes_app", "notes_app")
@@ -195,7 +195,7 @@ with sync_playwright() as p:
     fb = start_fallback_server()
     try:
         fb_page = browser.new_page(viewport={"width": 1400, "height": 900})
-        fb_page.goto("http://127.0.0.1:8767/")
+        fb_page.goto("http://127.0.0.1:8767/legacy")
         fb_page.wait_for_function("!document.querySelector('#llmStatus').textContent.includes('Checking')", timeout=15000)
         status = fb_page.inner_text("#llmStatus")
         check("UI says the requested provider is unavailable and why", "openrouter" in status and "missing_key" in status and "offline template" in status, status)

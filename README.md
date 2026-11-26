@@ -34,6 +34,19 @@ Python **3.11 or newer** (3.13 recommended). Check with `python --version`. If `
 
     python -m repomind.cli serve                       # web UI at http://127.0.0.1:8000  (API docs at /docs)
 
+### Web frontend (React + TypeScript + Vite, in `frontend/`)
+
+    cd frontend
+    npm install
+    npm run build                                      # once; the API then serves the app at http://127.0.0.1:8000
+    npm run dev                                        # development: http://localhost:5173, proxies /api to :8000
+    npm test                                           # unit tests (Vitest)
+
+Pages: repositories (GitHub URL / local folder / ZIP), overview dashboard, file explorer with source viewer, interactive graph
+(entity and file level, filters, edge evidence), path tracing, impact analysis (component or git diff), API contracts, and a
+cited Q&A chat. Without a build, `/` falls back to the original single-page UI, which stays available at `/legacy`.
+Browser test: `python backend/e2e/ui_react.py` (needs Playwright and Edge).
+
     python -m repomind.cli analyze test_apps/login_app
     python -m repomind.cli ask     test_apps/login_app "How does the login flow work?"
     python -m repomind.cli impact  test_apps/login_app --target UserRepository.find_by_username
