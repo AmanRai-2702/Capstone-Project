@@ -15,10 +15,12 @@
   header h1 { margin:0; font-size:18px; letter-spacing:.3px; } header h1 span { color:var(--accent); }
   header input[type=text] { flex:1; min-width:240px; padding:8px 10px; background:var(--panel2); border:1px solid var(--line); border-radius:6px; color:var(--text); }
   button { padding:8px 14px; background:var(--accent); border:0; border-radius:6px; color:#fff; cursor:pointer; font-weight:600; }
-  button.ghost { background:var(--panel2); border:1px solid var(--line); color:var(--text); font-weight:500; }
+  button.ghost { background:var(--panel2); border:1px solid var(--line); color:var(--text); font-weight:500; padding:5px 10px; font-size:12px; }
   button:disabled { opacity:.5; cursor:wait; }
+  button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, .tabs div:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
   #status { color:var(--mute); font-size:12px; }
-  main { flex:1; display:grid; grid-template-columns:300px 1fr 400px; min-height:0; }
+  #status.err { color:var(--bad); }
+  main { flex:1; display:grid; grid-template-columns:310px 1fr 420px; min-height:0; }
   aside, section { min-height:0; overflow:auto; }
   #left { background:var(--panel); border-right:1px solid var(--line); padding:12px; }
   #center { position:relative; display:flex; flex-direction:column; }
@@ -29,38 +31,63 @@
   .item { padding:5px 8px; border-radius:5px; cursor:pointer; font-size:13px; word-break:break-all; }
   .item:hover { background:var(--panel2); } .item small { color:var(--mute); display:block; }
   .tag { display:inline-block; font-size:10px; padding:1px 6px; border-radius:8px; background:var(--panel2); color:var(--mute); margin-left:4px; }
-  .tag.inferred { color:var(--warn); } .tag.high { color:var(--bad); } .tag.medium { color:var(--warn); } .tag.low { color:var(--ok); }
-  #toolbar { display:flex; gap:14px; align-items:center; padding:8px 12px; border-bottom:1px solid var(--line); background:var(--panel); font-size:12px; color:var(--mute); flex-wrap:wrap; }
+  .tag.inferred, .tag.heuristic, .tag.medium, .tag.possible { color:var(--warn); } .tag.high, .tag.certain { color:var(--bad); } .tag.low, .tag.detected, .tag.info { color:var(--ok); }
+  .tag.info { color:var(--accent); }
+  #toolbar { display:flex; gap:10px 14px; align-items:center; padding:8px 12px; border-bottom:1px solid var(--line); background:var(--panel); font-size:12px; color:var(--mute); flex-wrap:wrap; }
+  #toolbar select, #toolbar input[type=text], #toolbar input[type=number] { padding:4px 6px; font-size:12px; }
+  #toolbar input[type=text] { width:130px; } #toolbar input[type=number] { width:64px; }
+  #relBox { position:relative; } #relBox summary { cursor:pointer; color:var(--text); }
+  #relList { position:absolute; z-index:5; top:22px; left:0; background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:8px; display:grid; gap:3px; min-width:150px; }
+  #graphInfo { color:var(--text); }
   #cy { flex:1; min-height:0; }
-  #legend { position:absolute; left:12px; bottom:12px; background:rgba(23,29,37,.92); border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:11px; }
+  #banner { display:none; padding:6px 12px; background:#2a2411; color:var(--warn); border-bottom:1px solid var(--line); font-size:12px; }
+  #legend { position:absolute; left:12px; bottom:12px; background:rgba(23,29,37,.92); border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:11px; max-height:45%; overflow:auto; }
   #legend span { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; }
-  .tabs { display:flex; border-bottom:1px solid var(--line); } .tabs div { flex:1; text-align:center; padding:9px; cursor:pointer; color:var(--mute); border-bottom:2px solid transparent; }
+  .tabs { display:flex; border-bottom:1px solid var(--line); flex-wrap:wrap; } .tabs div { flex:1; text-align:center; padding:9px 4px; cursor:pointer; color:var(--mute); border-bottom:2px solid transparent; font-size:13px; }
   .tabs div.on { color:var(--text); border-bottom-color:var(--accent); }
   .pane { display:none; flex:1; min-height:0; overflow:auto; padding:12px; } .pane.on { display:block; }
   #chatlog { flex:1; overflow:auto; } .msg { margin:0 0 12px; padding:9px 11px; border-radius:8px; white-space:pre-wrap; word-break:break-word; font-size:13px; }
-  .msg.u { background:var(--accent); color:#fff; margin-left:36px; } .msg.a { background:var(--panel2); margin-right:12px; }
+  .msg.u { background:var(--accent); color:#fff; margin-left:36px; } .msg.a { background:var(--panel2); margin-right:12px; } .msg.pending { color:var(--mute); font-style:italic; }
   .cite { color:var(--accent); cursor:pointer; text-decoration:underline; font-family:ui-monospace,Consolas,monospace; font-size:12px; display:inline-block; margin:2px 6px 0 0; }
   #chatform { display:flex; gap:8px; padding-top:8px; border-top:1px solid var(--line); } #chatform input { flex:1; padding:8px; background:var(--panel2); border:1px solid var(--line); border-radius:6px; color:var(--text); }
+  #llmStatus { font-size:12px; padding:6px 8px; margin-bottom:8px; border:1px solid var(--line); border-radius:6px; background:var(--panel2); }
+  #llmStatus.warn { border-color:var(--warn); color:var(--warn); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 8px; } .chip { font-size:12px; padding:3px 9px; border:1px solid var(--line); border-radius:12px; cursor:pointer; background:var(--panel2); color:var(--text); }
+  .chip:hover { border-color:var(--accent); }
   pre { background:#0b0f14; border:1px solid var(--line); border-radius:6px; padding:8px; overflow:auto; font-size:12px; margin:6px 0; }
   .ln { color:var(--mute); user-select:none; margin-right:10px; } .hl { background:rgba(76,154,255,.18); display:block; }
-  .chain { color:var(--mute); font-size:12px; margin-top:3px; } .card { border:1px solid var(--line); border-radius:6px; padding:8px; margin:0 0 8px; background:var(--panel2); }
+  .chain { color:var(--mute); font-size:12px; margin-top:3px; word-break:break-word; } .card { border:1px solid var(--line); border-radius:6px; padding:8px; margin:0 0 8px; background:var(--panel2); }
+  .card.err { border-color:var(--bad); color:var(--bad); } .card.sev-high { border-left:3px solid var(--bad); } .card.sev-medium { border-left:3px solid var(--warn); } .card.sev-info { border-left:3px solid var(--accent); }
   .flow { margin:0 0 10px; } .flow .step { padding:2px 0 2px 10px; border-left:2px solid var(--line); font-size:12px; cursor:pointer; } .flow .step:hover { color:var(--accent); }
+  .hop { color:var(--mute); font-size:11px; padding:1px 0 1px 18px; border-left:2px dashed var(--line); margin-left:4px; }
   .empty { color:var(--mute); padding:20px; text-align:center; }
   .upload { padding:8px 14px; background:var(--panel2); border:1px solid var(--line); border-radius:6px; cursor:pointer; font-weight:500; }
-  select, textarea { background:var(--panel2); border:1px solid var(--line); border-radius:6px; color:var(--text); padding:7px; }
+  select, textarea, input[type=text], input[type=number] { background:var(--panel2); border:1px solid var(--line); border-radius:6px; color:var(--text); padding:7px; }
   textarea { width:100%; font:12px ui-monospace,Consolas,monospace; margin:8px 0; }
-  .filters { display:flex; gap:6px; margin:6px 0; } .filters input { flex:1; min-width:0; padding:6px; background:var(--panel2); border:1px solid var(--line); border-radius:6px; color:var(--text); }
-  .tag.uncertain { color:var(--warn); } .tag.direct { color:var(--bad); }
+  .filters { display:flex; gap:6px; margin:6px 0; } .filters input { flex:1; min-width:0; padding:6px; }
+  .row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:6px 0; } .row input[type=text] { flex:1; min-width:120px; }
+  .tag.uncertain { color:var(--warn); } .tag.direct { color:var(--bad); } .tag.data_flow { color:var(--accent); }
+  details > summary { cursor:pointer; color:var(--mute); font-size:12px; text-transform:uppercase; letter-spacing:.8px; padding:4px 0; }
+  details.dir > summary { text-transform:none; letter-spacing:0; font-size:13px; color:var(--text); padding:2px 0; }
+  details.dir > div { margin-left:12px; border-left:1px solid var(--line); padding-left:6px; }
+  .filerow { font-weight:600; color:var(--text); font-size:13px; padding:3px 8px; cursor:pointer; border-radius:5px; } .filerow:hover { background:var(--panel2); }
+  .comp { padding-left:18px; }
+  .bar { display:flex; height:10px; border-radius:5px; overflow:hidden; margin:6px 0; background:var(--panel2); } .bar i { display:block; height:100%; }
+  .legend-lang { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:12px; color:var(--mute); } .legend-lang span { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:4px; }
+  .kpis { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin:8px 0; } .kpi { background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:6px 8px; } .kpi b { display:block; font-size:18px; } .kpi small { color:var(--mute); }
+  .kv { font-family:ui-monospace,Consolas,monospace; font-size:12px; word-break:break-word; }
+  .bad { color:var(--bad); } .warn { color:var(--warn); }
+  @media (max-width: 1100px) { main { grid-template-columns:1fr; grid-auto-rows:minmax(420px,auto); } body { height:auto; } #cy { min-height:420px; } }
 </style>
 </head>
 <body>
 <header>
   <h1>Repo<span>Mind</span></h1>
-  <input id="loc" type="text" placeholder="Local folder path or https://github.com/owner/repo" value="">
+  <input id="loc" type="text" placeholder="Local folder path or https://github.com/owner/repo" value="" aria-label="Repository location">
   <button id="go">Analyze</button>
   <label class="upload">Upload .zip<input type="file" id="zip" accept=".zip" hidden></label>
-  <select id="repoSel" title="Previously analysed repositories"><option value="">Saved repositories...</option></select>
-  <span id="status">Enter a repository to begin.</span>
+  <select id="repoSel" title="Previously analysed repositories" aria-label="Saved repositories"><option value="">Saved repositories...</option></select>
+  <span id="status" role="status" aria-live="polite">Enter a repository to begin.</span>
 </header>
 <main>
   <aside id="left"><div class="empty">No repository loaded.</div></aside>
@@ -69,27 +96,51 @@
       <label><input type="checkbox" id="showFiles"> files</label>
       <label><input type="checkbox" id="showContains"> containment edges</label>
       <label><input type="checkbox" id="showInferred" checked> inferred edges</label>
+      <label>level <select id="level" title="Collapse the graph to one node per file (best for large repositories)"><option value="entity">entities</option><option value="file">files</option></select></label>
+      <label>language <select id="langSel"><option value="">all</option></select></label>
+      <label>type <select id="typeSel"><option value="">all</option></select></label>
+      <details id="relBox"><summary>relationships</summary><div id="relList"></div></details>
+      <label title="Hide edges below this confidence">confidence &ge; <span id="confVal">0</span> <input type="range" id="minConf" min="0" max="1" step="0.05" value="0"></label>
+      <label title="Keep only the best-connected N nodes">max nodes <input type="number" id="maxNodes" min="10" max="5000" value="500"></label>
+      <input type="text" id="nodeSearch" placeholder="find node..." aria-label="Find a node in the graph">
       <button class="ghost" id="fit">Fit</button><button class="ghost" id="clear">Clear highlight</button>
-      <span id="hint">Click a node to see details and its blast radius.</span>
+      <span id="graphInfo"></span>
+      <span id="hint">Click a node for details and blast radius, an edge for its evidence, double-click to focus on its neighbourhood.</span>
     </div>
+    <div id="banner"></div>
     <div id="cy"></div>
     <div id="legend"></div>
   </section>
   <aside id="right">
-    <div class="tabs"><div data-p="ask" class="on">Ask</div><div data-p="detail">Details</div><div data-p="impact">Impact</div><div data-p="flows">Flows</div><div data-p="src">Source</div><div data-p="diff">Diff</div><div data-p="gaps">Gaps</div></div>
+    <div class="tabs" role="tablist"><div data-p="ask" class="on" tabindex="0">Ask</div><div data-p="detail" tabindex="0">Details</div><div data-p="impact" tabindex="0">Impact</div><div data-p="flows" tabindex="0">Flows</div><div data-p="src" tabindex="0">Source</div><div data-p="diff" tabindex="0">Diff</div><div data-p="contracts" tabindex="0">Contracts</div><div data-p="gaps" tabindex="0">Gaps</div></div>
     <div class="pane on" id="p-ask" style="display:flex;flex-direction:column">
-      <div id="chatlog"><div class="msg a">Ask about the repository, e.g. "How does the login flow work?" or "What breaks if I change UserRepository.find_by_username?"</div></div>
-      <form id="chatform"><input id="q" placeholder="Ask a question..." autocomplete="off"><button>Ask</button></form>
+      <div id="llmStatus">Checking answer provider...</div>
+      <div class="chips" id="chips"></div>
+      <div id="chatlog"><div class="msg a">Ask about the repository, e.g. "What is the purpose of this repository?", "How does the login flow work?" or "What breaks if I change UserRepository.find_by_username?"</div></div>
+      <form id="chatform"><input id="q" placeholder="Ask a question..." autocomplete="off" aria-label="Question"><button id="askBtn">Ask</button></form>
     </div>
-    <div class="pane" id="p-detail"><div class="empty">Select a node.</div></div>
-    <div class="pane" id="p-impact"><div class="empty">Select a node to analyse the impact of changing it.</div></div>
-    <div class="pane" id="p-flows"><div class="empty">No repository loaded.</div></div>
+    <div class="pane" id="p-detail"><div class="empty">Select a node or an edge.</div></div>
+    <div class="pane" id="p-impact">
+      <label class="chain"><input type="checkbox" id="strictRefs"> strict: do not follow element references (fewer, more precise "indirect" results)</label>
+      <div id="impactBody"><div class="empty">Select a node to analyse the impact of changing it.</div></div>
+    </div>
+    <div class="pane" id="p-flows">
+      <h2>Trace an execution path</h2>
+      <div class="row"><input type="text" id="traceFrom" list="entityList" placeholder="from (e.g. a button or endpoint)" aria-label="Trace start"></div>
+      <div class="row"><input type="text" id="traceTo" list="entityList" placeholder="to (e.g. a repository method)" aria-label="Trace end"></div>
+      <div class="row"><select id="traceView" title="Which direction the arrows mean"><option value="execution">execution: what runs next</option><option value="impact">impact: what a change affects</option><option value="dependency">dependency: what depends on what</option><option value="syntactic">syntactic: as written in code</option></select><button id="traceGo" class="ghost">Trace</button></div>
+      <datalist id="entityList"></datalist>
+      <div id="traceOut"></div>
+      <h2>Entry points</h2>
+      <div id="flowList"><div class="empty">No repository loaded.</div></div>
+    </div>
     <div class="pane" id="p-src"><div class="empty">Click a citation or a node location.</div></div>
     <div class="pane" id="p-diff">
       <div class="chain">Paste a unified diff (<code>git diff -U0</code>) to see what the change affects.</div>
       <textarea id="diffText" rows="9" placeholder="--- a/app.py&#10;+++ b/app.py&#10;@@ -10,1 +10,2 @@"></textarea>
       <button id="diffGo">Analyse diff</button><div id="diffOut"></div>
     </div>
+    <div class="pane" id="p-contracts"><div class="empty">No repository loaded.</div></div>
     <div class="pane" id="p-gaps"><div class="empty">No repository loaded.</div></div>
   </aside>
 </main>
@@ -98,26 +149,33 @@
 "use strict";
 const COLORS = { html_element:"#e5a23c", css_selector:"#b07cf0", function:"#4c9aff", method:"#2fd0c0", class:"#3fb27f",
                  api_endpoint:"#e5534b", file:"#6b7787", module:"#6b7787" };
+const LANG_COLORS = { python:"#4b8bbe", javascript:"#e8d44d", html:"#e34c26", css:"#9b6bdf", unknown:"#6b7787" };
+const LARGE_GRAPH = 600;                       // above this many nodes the file-level graph is the default
 const $ = (s) => document.querySelector(s);
-let repo = null, cy = null, graphData = null, selected = null;
+let repo = null, cy = null, graphData = null, selected = null, focusInfo = null, drawTimer = null, drawSeq = 0;
 
 // All repository-derived strings go through text nodes / textContent, never innerHTML.
 function el(tag, props = {}, ...kids) {
   const n = document.createElement(tag);
-  for (const [k, v] of Object.entries(props)) { if (k === "class") n.className = v; else if (k === "onclick") n.onclick = v; else n.setAttribute(k, v); }
-  for (const kid of kids) n.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+  for (const [k, v] of Object.entries(props)) { if (k === "class") n.className = v; else if (k === "onclick") n.onclick = v; else if (k === "value") n.value = v; else n.setAttribute(k, v); }
+  for (const kid of kids) if (kid !== null && kid !== undefined && kid !== false) n.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
   return n;
 }
 const short = (id) => (graphData && graphData.nodes.find(n => n.id === id)?.label) || id;
+const tag = (text, cls = "") => el("span", {class:"tag " + cls}, text);
 
 async function api(path, opts) {
   const r = await fetch(path, opts);
   const body = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(body.detail || r.statusText);
+  if (!r.ok) throw new Error(typeof body.detail === "string" ? body.detail : (body.detail ? JSON.stringify(body.detail) : r.statusText));
   return body;
 }
-function setStatus(t) { $("#status").textContent = t; }
+function setStatus(t, isError = false) { const s = $("#status"); s.textContent = t; s.classList.toggle("err", isError); }
+function loading(pane, msg = "Loading...") { pane.replaceChildren(el("div", {class:"empty"}, msg)); }
+function failure(pane, e) { pane.replaceChildren(el("div", {class:"card err"}, "Error: " + e.message)); }
+function qs(params) { const p = new URLSearchParams(); for (const [k, v] of Object.entries(params)) if (v !== null && v !== undefined && v !== "") p.set(k, v); return p.toString(); }
 
+// ------------------------------------------------------------------ loading repositories
 $("#go").onclick = async () => {
   const location = $("#loc").value.trim(); if (!location) return;
   $("#go").disabled = true; setStatus("Analyzing...");
@@ -125,7 +183,7 @@ $("#go").onclick = async () => {
     repo = await api("/api/repositories", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ location }) });
     await loadRepo(); refreshSaved();
     setStatus(`${repo.name}: ${repo.entity_count} entities, ${repo.relationship_count} relationships`);
-  } catch (e) { setStatus("Error: " + e.message); } finally { $("#go").disabled = false; }
+  } catch (e) { setStatus("Error: " + e.message, true); } finally { $("#go").disabled = false; }
 };
 { const pre = new URLSearchParams(location.search).get("location"); if (pre) { $("#loc").value = pre; setTimeout(() => $("#go").click(), 0); } }
 $("#zip").onchange = async (ev) => {
@@ -137,7 +195,7 @@ $("#zip").onchange = async (ev) => {
     if (!r.ok) throw new Error(body.detail || r.statusText);
     repo = body; await loadRepo(); refreshSaved();
     setStatus(`${repo.name}: ${repo.entity_count} entities, ${repo.relationship_count} relationships`);
-  } catch (e) { setStatus("Error: " + e.message); } finally { $("#go").disabled = false; ev.target.value = ""; }
+  } catch (e) { setStatus("Error: " + e.message, true); } finally { $("#go").disabled = false; ev.target.value = ""; }
 };
 async function refreshSaved() {
   try {
@@ -148,81 +206,221 @@ async function refreshSaved() {
 }
 $("#repoSel").onchange = async (ev) => {
   if (!ev.target.value) return;
+  setStatus("Loading...");
   try { repo = await api("/api/repositories/" + encodeURIComponent(ev.target.value)); await loadRepo();
         setStatus(`${repo.name}: ${repo.entity_count} entities, ${repo.relationship_count} relationships`); }
-  catch (e) { setStatus("Error: " + e.message); }
+  catch (e) { setStatus("Error: " + e.message, true); }
 };
 refreshSaved();
 $("#loc").addEventListener("keydown", e => { if (e.key === "Enter") $("#go").click(); });
+setTimeout(() => { loadLlmStatus(); renderChips(); }, 0);     // provider status and suggestions are useful before any repository is loaded
 
 async function loadRepo() {
-  graphData = await api(`/api/repositories/${repo.repo_id}/graph`);
-  selected = null;
-  for (const [id, msg] of [["detail", "Select a node."], ["impact", "Select a node to analyse the impact of changing it."], ["src", "Click a citation or a node location."]])
-    $("#p-" + id).replaceChildren(el("div", {class:"empty"}, msg));       // never show the previous repository's data
-  $("#diffOut").replaceChildren();
-  renderSidebar(); drawGraph(); renderLegend(); loadFlows(); loadGaps();
+  graphData = await api(`/api/repositories/${repo.repo_id}/graph`);      // the whole graph: labels, explorer, entity list
+  selected = null; focusInfo = null;
+  $("#p-detail").replaceChildren(el("div", {class:"empty"}, "Select a node or an edge."));   // never show the previous repository's data
+  $("#impactBody").replaceChildren(el("div", {class:"empty"}, "Select a node to analyse the impact of changing it."));
+  $("#p-src").replaceChildren(el("div", {class:"empty"}, "Click a citation or a node location."));
+  $("#diffOut").replaceChildren(); $("#traceOut").replaceChildren();
+  $("#chatlog").replaceChildren(el("div", {class:"msg a"}, `Ask about ${repo.name}, e.g. "What is the purpose of this repository?", "How does the login flow work?" or "What breaks if I change <a function>?"`));
+  $("#traceFrom").value = ""; $("#traceTo").value = "";
+  renderSidebar(); setupGraphControls(); renderLegend(); fillEntityList();
+  await drawGraph();
+  loadFlowsPane(); loadGaps(); loadContracts(); loadOverview(); loadLlmStatus(); renderChips();
 }
 
+// ------------------------------------------------------------------ left: dashboard and explorer
 function renderSidebar() {
   const left = $("#left"); left.replaceChildren();
-  left.append(el("h2", {}, "Repository"), el("div", {}, repo.name));
-  left.append(el("h2", {}, "Entities"));
-  for (const [t, n] of Object.entries(repo.entity_counts_by_type)) left.append(el("div", {class:"stat"}, t.replace("_"," "), el("b", {}, n)));
-  left.append(el("h2", {}, "Relationships"));
-  for (const [t, n] of Object.entries(repo.relationship_counts_by_type)) left.append(el("div", {class:"stat"}, t, el("b", {}, n)));
-  for (const [t, n] of Object.entries(repo.relationship_counts_by_kind)) left.append(el("div", {class:"stat"}, t, el("b", {}, n)));
-  left.append(el("h2", {}, "Files and components"));
-  const search = el("input", {type:"text", placeholder:"Search components..."});
-  const typeSel = el("select"); typeSel.append(el("option", {value:""}, "all types"));
+  const langs = repo.language_counts || {}, totalSrc = Object.values(langs).reduce((a, b) => a + b, 0);
+  const dash = el("details", {open:""}, el("summary", {}, "Dashboard"));
+  dash.append(el("div", {}, el("b", {}, repo.name), tag(repo.analysis_errors && repo.analysis_errors.length ? repo.analysis_errors.length + " analysis error(s)" : "analysed", repo.analysis_errors && repo.analysis_errors.length ? "medium" : "detected")));
+  dash.append(el("div", {class:"kpis"},
+    el("div", {class:"kpi"}, el("b", {}, repo.file_count ?? "?"), el("small", {}, `files (${repo.source_file_count ?? "?"} source)`)),
+    el("div", {class:"kpi"}, el("b", {}, repo.entity_count), el("small", {}, "entities")),
+    el("div", {class:"kpi"}, el("b", {}, repo.relationship_count), el("small", {}, "relationships")),
+    el("div", {class:"kpi"}, el("b", {}, Object.values(repo.unresolved_counts_by_reason || {}).reduce((a, b) => a + b, 0)), el("small", {}, "unresolved (see Gaps)"))));
+  if (totalSrc) {
+    const bar = el("div", {class:"bar", title:"source files by language"}), legend = el("div", {class:"legend-lang"});
+    for (const [lang, n] of Object.entries(langs).sort((a, b) => b[1] - a[1])) {
+      const seg = el("i"); seg.style.width = (100 * n / totalSrc) + "%"; seg.style.background = LANG_COLORS[lang] || LANG_COLORS.unknown; bar.append(seg);
+      const dot = el("span"); dot.style.background = LANG_COLORS[lang] || LANG_COLORS.unknown; legend.append(el("div", {}, dot, `${lang} ${n}`));
+    }
+    dash.append(bar, legend);
+  }
+  dash.append(el("h2", {}, "Summary"), el("div", {id:"overview"}, el("div", {class:"chain"}, "Loading summary...")));
+  const stats = el("details", {}, el("summary", {}, "Counts"));
+  for (const [t, n] of Object.entries(repo.entity_counts_by_type)) stats.append(el("div", {class:"stat"}, t.replace("_"," "), el("b", {}, n)));
+  stats.append(el("h2", {}, "Relationships"));
+  for (const [t, n] of Object.entries(repo.relationship_counts_by_type)) stats.append(el("div", {class:"stat"}, t, el("b", {}, n)));
+  for (const [t, n] of Object.entries(repo.relationship_counts_by_kind)) stats.append(el("div", {class:"stat"}, t, el("b", {}, n)));
+  left.append(dash, stats);
+
+  const explorer = el("details", {open:""}, el("summary", {}, "Files and components"));
+  const search = el("input", {type:"text", placeholder:"Search components...", "aria-label":"Search components"});
+  const typeSel = el("select", {"aria-label":"Component type"}); typeSel.append(el("option", {value:""}, "all types"));
   for (const t of Object.keys(repo.entity_counts_by_type).filter(t => t !== "file")) typeSel.append(el("option", {value:t}, t.replace("_"," ")));
-  left.append(el("div", {class:"filters"}, search, typeSel));
+  explorer.append(el("div", {class:"filters"}, search, typeSel));
+  const tree = el("div", {id:"tree"}); explorer.append(tree); left.append(explorer);
+  buildTree(tree);
   const applyFilter = () => {
-    const q = search.value.trim().toLowerCase(), t = typeSel.value;
-    left.querySelectorAll(".comp").forEach(n => { n.style.display = ((!q || n.dataset.label.includes(q)) && (!t || n.dataset.type === t)) ? "" : "none"; });
+    const q = search.value.trim().toLowerCase(), t = typeSel.value, active = !!(q || t);
+    tree.querySelectorAll(".comp").forEach(n => { n.style.display = ((!q || n.dataset.label.includes(q) || n.dataset.file.includes(q)) && (!t || n.dataset.type === t)) ? "" : "none"; });
+    tree.querySelectorAll("details.dir").forEach(d => {
+      const any = [...d.querySelectorAll(".comp")].some(c => c.style.display !== "none");
+      d.style.display = !active || any ? "" : "none"; if (active && any) d.open = true;
+    });
+    tree.querySelectorAll(".filerow").forEach(r => { const hasVisible = [...r.parentElement.querySelectorAll(".comp")].some(c => c.style.display !== "none"); r.style.display = !active || hasVisible ? "" : "none"; });
     if (cy) { cy.elements().removeClass("dim");
-      if (q || t) { const hit = cy.nodes().filter(n => (!q || n.data("label").toLowerCase().includes(q)) && (!t || n.data("type") === t));
+      if (active) { const hit = cy.nodes().filter(n => (!q || n.data("label").toLowerCase().includes(q)) && (!t || n.data("type") === t));
         cy.elements().addClass("dim"); hit.removeClass("dim"); } }
   };
   search.oninput = applyFilter; typeSel.onchange = applyFilter;
-  const byFile = {};
-  for (const n of graphData.nodes) { const f = n.location ? n.location.split(":")[0] : (n.type === "file" ? n.label : "(virtual)"); (byFile[f] ||= []).push(n); }
-  for (const f of Object.keys(byFile).sort()) {
-    left.append(el("div", {class:"stat"}, el("b", {}, f)));
-    for (const n of byFile[f].filter(n => n.type !== "file")) {
-      const row = el("div", {class:"item comp", onclick:() => selectNode(n.id)}, n.label, el("span", {class:"tag"}, n.type.replace("_"," ")));
-      row.dataset.label = n.label.toLowerCase(); row.dataset.type = n.type; left.append(row);
-    }
-  }
 }
 
-function drawGraph() {
-  const showFiles = $("#showFiles").checked, showContains = $("#showContains").checked, showInferred = $("#showInferred").checked;
-  const nodes = graphData.nodes.filter(n => showFiles || n.type !== "file");
-  const ids = new Set(nodes.map(n => n.id));
-  const edges = graphData.edges.filter(e => ids.has(e.source) && ids.has(e.target) && (showContains || e.type !== "CONTAINS") && (showInferred || e.kind !== "inferred"));
-  cy = cytoscape({
-    container: $("#cy"), minZoom: 0.2, maxZoom: 1.6,   // maxZoom keeps a one-node graph from filling the screen
-    elements: [
-      ...nodes.map(n => ({ data: { id:n.id, label:n.label, type:n.type, location:n.location } })),
-      ...edges.map((e, i) => ({ data: { id:"e"+i, source:e.source, target:e.target, label:e.type, kind:e.kind } })),
-    ],
-    style: [
-      { selector:"node", style:{ label:"data(label)", "font-size":9, color:"#e6edf3", "text-valign":"bottom", "text-margin-y":3, "background-color":(n) => COLORS[n.data("type")] || "#888", width:18, height:18, "text-outline-width":2, "text-outline-color":"#0f1419" } },
-      { selector:"edge", style:{ width:1.4, "line-color":"#3a4756", "target-arrow-color":"#3a4756", "target-arrow-shape":"triangle", "curve-style":"bezier", label:"data(label)", "font-size":7, color:"#8b98a8", "text-rotation":"autorotate", "text-outline-width":2, "text-outline-color":"#0f1419" } },
-      { selector:"edge[kind = 'inferred']", style:{ "line-style":"dashed" } },
-      { selector:".dim", style:{ opacity:.12 } },
-      { selector:".impacted", style:{ "border-width":3, "border-color":"#e5534b", opacity:1 } },
-      { selector:".source", style:{ "border-width":4, "border-color":"#fff" } },
-      { selector:".pathedge", style:{ "line-color":"#e5534b", "target-arrow-color":"#e5534b", width:2.5, opacity:1 } },
-    ],
-    layout: { name:"cose", animate:false, nodeRepulsion:() => 60000, idealEdgeLength:() => 85, nodeOverlap:20, componentSpacing:40, gravity:1.2, numIter:2500, randomize:false, padding:30 },
-  });
-  cy.on("tap", "node", (ev) => selectNode(ev.target.id()));
+function buildTree(container) {
+  const files = graphData.nodes.filter(n => n.type === "file");
+  const byFile = {};
+  for (const n of graphData.nodes) if (n.type !== "file") { const f = n.location ? n.location.split(":")[0] : "(virtual)"; (byFile[f] ||= []).push(n); }
+  const root = {};
+  for (const f of files.map(f => f.label).concat(Object.keys(byFile).filter(f => !files.some(x => x.label === f)))) {
+    let node = root; const parts = f.split("/");
+    parts.slice(0, -1).forEach(p => { node = (node.dirs ||= {})[p] ||= {}; });
+    (node.files ||= []).push(f);
+  }
+  const render = (node, into) => {
+    for (const d of Object.keys(node.dirs || {}).sort()) {
+      const box = el("div"); const det = el("details", {class:"dir", open:""}, el("summary", {}, d + "/"), box);
+      render(node.dirs[d], box); into.append(det);
+    }
+    for (const f of (node.files || []).sort()) {
+      const wrap = el("div");
+      wrap.append(el("div", {class:"filerow", onclick:() => openFile(f)}, f.split("/").pop(), el("span", {class:"tag"}, "open")));
+      for (const n of (byFile[f] || [])) {
+        const row = el("div", {class:"item comp", onclick:() => selectNode(n.id)}, n.label, el("span", {class:"tag"}, n.type.replace("_"," ")));
+        row.dataset.label = n.label.toLowerCase(); row.dataset.type = n.type; row.dataset.file = f.toLowerCase(); wrap.append(row);
+      }
+      into.append(wrap);
+    }
+  };
+  render(root, container);
 }
-["showFiles","showContains","showInferred"].forEach(id => $("#"+id).onchange = () => repo && drawGraph());
+
+async function loadOverview() {
+  const box = $("#overview"); if (!box) return;
+  try {
+    const o = await api(`/api/repositories/${repo.repo_id}/overview`);
+    box.replaceChildren();
+    const shown = o.facts.slice(0, 5);
+    for (const f of shown) {
+      const row = el("div", {class:"chain"}, f.text);
+      if (f.snippet) row.append(el("pre", {}, f.snippet.split("\n").slice(0, 6).join("\n")));
+      if (f.citation) row.append(" ", el("span", {class:"cite", onclick:() => openCite(f.citation)}, f.citation));
+      box.append(row);
+    }
+    if (o.facts.length > shown.length) box.append(el("div", {class:"chain"}, `${o.facts.length - shown.length} more facts: ask "What is the purpose of this repository?"`));
+  } catch (e) { box.replaceChildren(el("div", {class:"chain"}, "Summary unavailable: " + e.message)); }
+}
+function fillEntityList() {
+  const dl = $("#entityList"); dl.replaceChildren();
+  for (const n of graphData.nodes.filter(n => n.type !== "file").slice(0, 3000)) { const o = el("option", {value:n.id}); o.label = n.label + " (" + n.type.replace("_", " ") + ")"; dl.append(o); }
+}
+
+// ------------------------------------------------------------------ centre: the graph and its controls
+function setupGraphControls() {
+  const langSel = $("#langSel"), typeSel = $("#typeSel"), rel = $("#relList");
+  langSel.replaceChildren(el("option", {value:""}, "all"));
+  for (const l of Object.keys(repo.language_counts || {})) langSel.append(el("option", {value:l}, l));
+  typeSel.replaceChildren(el("option", {value:""}, "all"));
+  for (const t of Object.keys(repo.entity_counts_by_type).filter(t => t !== "file")) typeSel.append(el("option", {value:t}, t.replace("_", " ")));
+  rel.replaceChildren();
+  for (const t of Object.keys(repo.relationship_counts_by_type).filter(t => t !== "CONTAINS")) {
+    const cb = el("input", {type:"checkbox", checked:"", "data-rel":t}); cb.onchange = scheduleDraw;
+    rel.append(el("label", {}, cb, " " + t));
+  }
+  $("#level").value = graphData.nodes.length > LARGE_GRAPH ? "file" : "entity";
+  $("#minConf").value = 0; $("#confVal").textContent = "0"; $("#nodeSearch").value = "";
+  if ($("#level").value === "file") showBanner(`Large repository (${graphData.nodes.length} nodes): showing the file-level graph. Switch "level" to entities for the detailed graph.`);
+  else showBanner("");
+}
+function showBanner(text) { const b = $("#banner"); b.textContent = text; b.style.display = text ? "block" : "none"; }
+function graphParams() {
+  const level = $("#level").value;
+  if (level === "file") return qs({ level:"file", languages:$("#langSel").value, max_nodes:$("#maxNodes").value });
+  const boxes = [...document.querySelectorAll("#relList input")];
+  const rels = boxes.filter(b => b.checked).map(b => b.dataset.rel);
+  if ($("#showContains").checked) rels.push("CONTAINS");
+  const everything = rels.length === boxes.length + 1;
+  return qs({
+    include_files: $("#showFiles").checked ? "true" : "false",
+    rel_types: everything ? "" : (rels.length ? rels.join(",") : "NONE"),
+    kinds: $("#showInferred").checked ? "" : "detected,heuristic",
+    min_confidence: +$("#minConf").value > 0 ? $("#minConf").value : "",
+    languages: $("#langSel").value, types: $("#typeSel").value, max_nodes: $("#maxNodes").value,
+  });
+}
+function scheduleDraw() { clearTimeout(drawTimer); drawTimer = setTimeout(() => { focusInfo = null; drawGraph(); }, 250); }
+
+async function drawGraph(data = null) {
+  if (!repo) return;
+  const info = $("#graphInfo"), seq = ++drawSeq;
+  info.textContent = "Loading graph...";
+  try {
+    if (!data) data = await api(`/api/repositories/${repo.repo_id}/graph?${graphParams()}`);
+    if (seq !== drawSeq) return;                                       // a newer request replaced this one
+    const fileLevel = data.meta && data.meta.level === "file", manyEdges = data.edges.length > 250, big = data.nodes.length > 300;
+    cy = cytoscape({
+      container: $("#cy"), minZoom: 0.1, maxZoom: 1.6,   // maxZoom keeps a one-node graph from filling the screen
+      elements: [
+        ...data.nodes.map(n => ({ data: { id:n.id, label:fileLevel ? n.label.split("/").slice(-2).join("/") : n.label, full:n.label, type:n.type, language:n.language, location:n.location, degree:n.degree || 0, size:n.entities || 0 } })),
+        ...data.edges.map(e => ({ data: { id:e.id, source:e.source, target:e.target, label:e.type, kind:e.kind || "detected", confidence:e.confidence ?? 1, count:e.count || 0 } })),
+      ],
+      style: [
+        { selector:"node", style:{ label:"data(label)", "font-size":fileLevel ? 10 : 9, color:"#e6edf3", "text-valign":"bottom", "text-margin-y":3, "background-color":(n) => fileLevel ? (LANG_COLORS[n.data("language")] || "#888") : (COLORS[n.data("type")] || "#888"), width:(n) => fileLevel ? 14 + Math.min(24, Math.sqrt(n.data("size") || 1) * 4) : 18, height:(n) => fileLevel ? 14 + Math.min(24, Math.sqrt(n.data("size") || 1) * 4) : 18, "text-outline-width":2, "text-outline-color":"#0f1419" } },
+        { selector:"edge", style:{ width:1.4, "line-color":"#3a4756", "target-arrow-color":"#3a4756", "target-arrow-shape":"triangle", "curve-style":"bezier", label:manyEdges ? "" : "data(label)", "font-size":7, color:"#8b98a8", "text-rotation":"autorotate", "text-outline-width":2, "text-outline-color":"#0f1419" } },
+        { selector:"edge[count > 0]", style:{ width:"mapData(count, 1, 30, 1.5, 7)" } },
+        { selector:"edge[kind = 'inferred'], edge[kind = 'heuristic']", style:{ "line-style":"dashed" } },
+        { selector:".dim", style:{ opacity:.12 } },
+        { selector:".impacted", style:{ "border-width":3, "border-color":"#e5534b", opacity:1 } },
+        { selector:".source", style:{ "border-width":4, "border-color":"#fff" } },
+        { selector:".pathedge", style:{ "line-color":"#e5534b", "target-arrow-color":"#e5534b", width:2.5, opacity:1 } },
+        { selector:".found", style:{ "border-width":3, "border-color":"#3fb27f", opacity:1 } },
+      ],
+      layout: { name:"cose", animate:false, nodeRepulsion:() => 60000, idealEdgeLength:() => 85, nodeOverlap:20, componentSpacing:40, gravity:1.2, numIter:big ? 600 : 2500, randomize:false, padding:30 },
+    });
+    cy.on("tap", "node", (ev) => selectNode(ev.target.id()));
+    cy.on("dbltap", "node", (ev) => focusNeighborhood(ev.target.id(), 1));
+    cy.on("tap", "edge", (ev) => showEdge(ev.target.data()));
+    const m = data.meta || {};
+    let text = `${data.nodes.length} nodes, ${data.edges.length} edges`;
+    if (m.truncated) text += `, the ${data.nodes.length} best-connected of ${m.total_nodes}`;
+    if (focusInfo) text = `Focused on ${short(focusInfo.id)} (depth ${focusInfo.depth}): ` + text;
+    info.textContent = text;
+    if (focusInfo) showBanner(`Neighbourhood of ${short(focusInfo.id)}.`);
+    else if (m.truncated) showBanner(`Showing the ${data.nodes.length} best-connected of ${m.total_nodes} nodes. Raise "max nodes", filter, or use the file level.`);
+    else if ($("#level").value !== "file") showBanner("");
+  } catch (e) { if (seq === drawSeq) info.textContent = "Error: " + e.message; }
+}
+["showFiles","showContains","showInferred","level","langSel","typeSel","maxNodes"].forEach(id => $("#"+id).onchange = () => repo && scheduleDraw());
+$("#minConf").oninput = () => { $("#confVal").textContent = $("#minConf").value; if (repo) scheduleDraw(); };
+$("#nodeSearch").oninput = () => {
+  if (!cy) return; const q = $("#nodeSearch").value.trim().toLowerCase(); cy.nodes().removeClass("found");
+  if (!q) return; const hit = cy.nodes().filter(n => n.data("label").toLowerCase().includes(q) || n.id().toLowerCase().includes(q));
+  hit.addClass("found"); if (hit.length) cy.animate({ fit:{ eles:hit, padding:60 }, duration:200 });
+  $("#graphInfo").textContent = `${hit.length} match(es) for "${q}"`;
+};
 $("#fit").onclick = () => cy && cy.fit(undefined, 30);
-$("#clear").onclick = () => cy && cy.elements().removeClass("dim impacted source pathedge");
+$("#clear").onclick = () => { if (cy) cy.elements().removeClass("dim impacted source pathedge found"); };
+
+async function focusNeighborhood(id, depth) {
+  try {
+    const data = await api(`/api/repositories/${repo.repo_id}/graph/neighborhood?${qs({ id, depth, direction:"both", rel_types:"CALLS,REQUESTS,HANDLES,TRIGGERS,IMPORTS,REFERENCES,INHERITS,USES,STYLES,RETURNS,DATA_FLOW,READS_STATE", max_nodes:200 })}`);
+    focusInfo = { id, depth }; await drawGraph(data);
+    const unfocus = el("button", {class:"ghost", onclick:() => { focusInfo = null; drawGraph(); }}, "Back to full graph");
+    $("#banner").append(" ", unfocus);
+    const n = cy.getElementById(id); if (n.length) n.addClass("source");
+  } catch (e) { setStatus("Error: " + e.message, true); }
+}
 
 function renderLegend() {
   const lg = $("#legend"); lg.replaceChildren();
@@ -230,8 +428,10 @@ function renderLegend() {
     const s = el("span"); s.style.background = c; lg.append(el("div", {}, s, t.replace("_"," ")));
   }
   lg.append(el("div", {}, "dashed edge = inferred"));
+  lg.append(el("div", {}, "file level: colour = language, thickness = number of links"));
 }
 
+// ------------------------------------------------------------------ selecting things
 async function selectNode(id) {
   selected = id;
   if (cy) { cy.elements().removeClass("source"); const n = cy.getElementById(id); if (n.length) n.addClass("source"); }
@@ -240,32 +440,87 @@ async function selectNode(id) {
 }
 
 async function showDetail(id) {
-  const d = await api(`/api/repositories/${repo.repo_id}/entity?id=${encodeURIComponent(id)}`);
-  const p = $("#p-detail"); p.replaceChildren();
-  const e = d.entity;
-  p.append(el("div", {class:"card"}, el("b", {}, e.qualified_name || e.name), el("span", {class:"tag"}, e.type), el("span", {class:"tag"}, e.language),
-    el("div", {class:"chain"}, e.id)));
-  if (e.location) p.append(el("button", {class:"ghost", onclick:() => showSource(e.location.file_path, e.location.start_line, e.location.end_line)}, `View source ${e.location.file_path}:${e.location.start_line}-${e.location.end_line}`));
-  const list = (title, items, pick) => {
-    p.append(el("h2", {}, title));
-    if (!items.length) p.append(el("div", {class:"chain"}, "none"));
-    for (const x of items) p.append(el("div", {class:"item", onclick:() => selectNode(pick(x))}, `${x.type} `, short(pick(x)), el("span", {class:"tag " + x.kind}, x.kind)));
-  };
-  list("Outgoing", d.outgoing, x => x.target); list("Incoming", d.incoming, x => x.source);
+  const p = $("#p-detail");
+  try {
+    const d = await api(`/api/repositories/${repo.repo_id}/entity?id=${encodeURIComponent(id)}`);
+    p.replaceChildren();
+    const e = d.entity;
+    p.append(el("div", {class:"card"}, el("b", {}, e.qualified_name || e.name), el("span", {class:"tag"}, e.type), el("span", {class:"tag"}, e.language),
+      el("div", {class:"chain"}, e.id)));
+    const actions = el("div", {class:"row"});
+    if (e.location) actions.append(el("button", {class:"ghost", onclick:() => showSource(e.location.file_path, e.location.start_line, e.location.end_line)}, `View source ${e.location.file_path}:${e.location.start_line}-${e.location.end_line}`));
+    if (e.type === "file") actions.append(el("button", {class:"ghost", onclick:() => openFile(e.qualified_name)}, "Open file"));
+    actions.append(el("button", {class:"ghost", onclick:() => focusNeighborhood(e.id, 1)}, "Focus: neighbours"),
+                   el("button", {class:"ghost", onclick:() => focusNeighborhood(e.id, 2)}, "Focus: 2 hops"),
+                   el("button", {class:"ghost", onclick:() => { $("#traceFrom").value = e.id; switchTab("flows"); }}, "Trace from here"),
+                   el("button", {class:"ghost", onclick:() => { $("#traceTo").value = e.id; switchTab("flows"); }}, "Trace to here"));
+    p.append(actions);
+    if (e.metadata && (e.metadata.response_keys || e.metadata.request_fields)) {
+      p.append(el("h2", {}, "API contract"),
+        el("div", {class:"chain"}, "returns: " + (e.metadata.response_keys?.length ? e.metadata.response_keys.join(", ") : "unknown") + (e.metadata.response_complete ? "" : " (incomplete)")),
+        el("div", {class:"chain"}, "requires: " + (e.metadata.request_fields ? Object.entries(e.metadata.request_fields).map(([k, r]) => k + (r ? "" : "?")).join(", ") : "unknown")));
+    }
+    const list = (title, items, pick) => {
+      p.append(el("h2", {}, title));
+      if (!items.length) p.append(el("div", {class:"chain"}, "none"));
+      for (const x of items) p.append(el("div", {class:"item", onclick:() => selectNode(pick(x))}, `${x.type} `, short(pick(x)), el("span", {class:"tag " + x.kind}, x.kind)));
+    };
+    list("Outgoing", d.outgoing, x => x.target); list("Incoming", d.incoming, x => x.source);
+  } catch (e) { failure(p, e); }
 }
 
-async function showImpact(id) {
-  const r = await api(`/api/repositories/${repo.repo_id}/impact?target=${encodeURIComponent(id)}`);
-  const p = $("#p-impact"); p.replaceChildren();
-  p.append(el("div", {class:"card"}, el("b", {}, short(r.target)), el("span", {class:"tag " + r.risk}, "risk " + r.risk),
+async function showEdge(d) {
+  const p = $("#p-detail"); switchTab("detail"); loading(p, "Loading evidence...");
+  try {
+    if (d.count) {      // an aggregated edge of the file-level graph
+      const [a, , b] = d.id.split("|");
+      p.replaceChildren(el("div", {class:"card"}, el("b", {}, `${d.count} ${d.label} relationship(s)`), el("div", {class:"chain"}, `${short(a)} -> ${short(b)}`),
+        el("div", {class:"chain"}, "Switch the level to entities and use \"Focus\" on either file to see each one with its evidence.")));
+      return;
+    }
+    const [source, type, target] = d.id.split("|");
+    const r = await api(`/api/repositories/${repo.repo_id}/graph/edge?${qs({ source, type, target })}`);
+    p.replaceChildren(el("div", {class:"card"}, el("b", {}, r.type), tag(r.kind, r.kind), tag("confidence " + r.confidence.toFixed(2)),
+      el("div", {class:"chain"}, `${short(r.source)} -> ${short(r.target)}`)));
+    p.append(el("h2", {}, "Evidence"));
+    if (!r.evidence.length) p.append(el("div", {class:"chain"}, "No source evidence recorded for this relationship."));
+    for (const ev of r.evidence) {
+      const loc = ev.location ? `${ev.location.file_path}:${ev.location.start_line}-${ev.location.end_line}` : null;
+      p.append(el("div", {class:"card"}, el("pre", {}, ev.snippet), loc ? el("span", {class:"cite", onclick:() => openCite(loc)}, loc) : ""));
+    }
+    if (r.metadata && Object.keys(r.metadata).length) p.append(el("h2", {}, "Details"), el("div", {class:"kv"}, JSON.stringify(r.metadata)));
+    p.append(el("div", {class:"row"}, el("button", {class:"ghost", onclick:() => selectNode(r.source)}, "Select source"), el("button", {class:"ghost", onclick:() => selectNode(r.target)}, "Select target")));
+  } catch (e) { failure(p, e); }
+}
+
+// ------------------------------------------------------------------ impact
+function renderImpact(box, r, highlightGraph) {
+  box.replaceChildren();
+  box.append(el("div", {class:"card"}, el("b", {}, short(r.target)), el("span", {class:"tag " + r.risk}, "risk " + r.risk),
     el("div", {class:"chain"}, `Blast radius: ${r.blast_radius}. ${r.risk_reason}`),
     el("div", {class:"chain"}, "By language: " + JSON.stringify(r.by_language)),
     el("div", {class:"chain"}, "By category: " + JSON.stringify(r.by_category))));
-  if (r.suggested_tests && r.suggested_tests.length) {
-    p.append(el("h2", {}, "Suggested tests to re-run"));
-    for (const t of r.suggested_tests) p.append(el("div", {class:"item"}, t));
+  for (const n of r.notes || []) box.append(el("div", {class:"card sev-info"}, n));
+  const kinds = {}; for (const k of Object.values(r.change_kinds || {})) kinds[k] = (kinds[k] || 0) + 1;
+  if (Object.keys(kinds).length > 1 || (kinds.signature || kinds.body)) box.append(el("div", {class:"chain"}, "Changed: " + Object.entries(kinds).map(([k, n]) => `${n} ${k}`).join(", ")));
+  if (r.risk_factors && r.risk_factors.length) {
+    box.append(el("h2", {}, "Why this risk level"));
+    for (const f of r.risk_factors) {
+      const card = el("div", {class:"card sev-" + f.severity}, tag(f.severity, f.severity), " ", f.detail);
+      for (const loc of f.evidence || []) card.append(" ", el("span", {class:"cite", onclick:() => openCite(loc)}, loc));
+      box.append(card);
+    }
   }
-  if (cy) {
+  const tests = r.suggested_test_details && r.suggested_test_details.length ? r.suggested_test_details : (r.suggested_tests || []).map(f => ({ file:f, score:null, reasons:[] }));
+  if (tests.length) {
+    box.append(el("h2", {}, "Suggested tests to re-run"));
+    for (const t of tests) box.append(el("div", {class:"item"}, t.file, t.score !== null ? tag("score " + t.score) : "", el("small", {}, (t.reasons || []).slice(0, 3).join("; "))));
+  }
+  if (r.affected_entry_points && r.affected_entry_points.length) {
+    box.append(el("h2", {}, "User-facing entry points affected"));
+    for (const e of r.affected_entry_points) box.append(el("div", {class:"item", onclick:() => selectNode(e)}, short(e)));
+  }
+  if (highlightGraph && cy) {
     cy.elements().removeClass("dim impacted pathedge");
     const hit = new Set([r.target, ...r.changed, ...[...r.direct, ...r.transitive].map(c => c.entity_id)]);
     cy.elements().addClass("dim");
@@ -275,33 +530,45 @@ async function showImpact(id) {
   }
   for (const [title, items] of [["Direct", r.direct], ["Transitive", r.transitive]]) {
     if (!items.length) continue;
-    p.append(el("h2", {}, title + " impact"));
+    box.append(el("h2", {}, title + " impact"));
     for (const c of items) {
       const loc = c.chain[0]?.location;
-      p.append(el("div", {class:"card"},
-        el("div", {class:"item", onclick:() => selectNode(c.entity_id)}, el("b", {}, c.name), el("span", {class:"tag"}, c.type), el("span", {class:"tag " + (c.category === "direct" ? "direct" : "")}, c.category.replace("_"," ") + " d=" + c.distance),
+      box.append(el("div", {class:"card"},
+        el("div", {class:"item", onclick:() => selectNode(c.entity_id)}, el("b", {}, c.name), el("span", {class:"tag"}, c.type), el("span", {class:"tag " + c.category}, c.category.replace("_"," ") + " d=" + c.distance),
           el("span", {class:"tag" + (c.uncertain ? " uncertain" : "")}, (c.uncertain ? "uncertain " : "") + "conf " + c.confidence.toFixed(2))),
         el("div", {class:"chain"}, c.explanation),
         loc ? el("span", {class:"cite", onclick:() => openCite(loc)}, loc) : ""));
     }
   }
-  if (!r.blast_radius) p.append(el("div", {class:"empty"}, "Nothing else depends on this component."));
+  if (!r.blast_radius) box.append(el("div", {class:"empty"}, "Nothing else depends on this component."));
 }
+async function showImpact(id) {
+  const box = $("#impactBody"); loading(box, "Analysing impact...");
+  try {
+    const r = await api(`/api/repositories/${repo.repo_id}/impact?${qs({ target:id, strict:$("#strictRefs").checked ? "true" : "" })}`);
+    renderImpact(box, r, true);
+  } catch (e) { failure(box, e); }
+}
+$("#strictRefs").onchange = () => { if (repo && selected) showImpact(selected); };
 
-async function loadFlows() {
-  const flows = await api(`/api/repositories/${repo.repo_id}/flows`);
-  const p = $("#p-flows"); p.replaceChildren();
-  if (!flows.length) { p.append(el("div", {class:"empty"}, "No UI/API entry points found.")); return; }
-  for (const f of flows) {
-    const box = el("div", {class:"flow card"}, el("b", {}, "Entry: " + short(f.entry)));
-    for (const path of f.paths) {
-      const line = el("div", {class:"chain"}, path.map(short).join("  ->  "));
-      line.style.cursor = "pointer";
-      line.onclick = () => highlightPath(path);
-      box.append(line);
+// ------------------------------------------------------------------ flows and tracing
+async function loadFlowsPane() {
+  const p = $("#flowList"); loading(p);
+  try {
+    const flows = await api(`/api/repositories/${repo.repo_id}/flows`);
+    p.replaceChildren();
+    if (!flows.length) { p.append(el("div", {class:"empty"}, "No UI/API entry points found.")); return; }
+    for (const f of flows) {
+      const box = el("div", {class:"flow card"}, el("b", {}, "Entry: " + short(f.entry)));
+      for (const path of f.paths) {
+        const line = el("div", {class:"chain"}, path.map(short).join("  ->  "));
+        line.style.cursor = "pointer";
+        line.onclick = () => highlightPath(path);
+        box.append(line);
+      }
+      p.append(box);
     }
-    p.append(box);
-  }
+  } catch (e) { failure(p, e); }
 }
 function highlightPath(path) {
   if (!cy) return;
@@ -311,60 +578,187 @@ function highlightPath(path) {
   for (let i = 0; i < path.length - 1; i++)
     cy.edges().filter(e => (e.source().id() === path[i] && e.target().id() === path[i+1]) || (e.source().id() === path[i+1] && e.target().id() === path[i])).removeClass("dim").addClass("pathedge");
 }
+const HOP_NOTE = { reversed:"read against the raw edge: a request reaches the endpoint, then its handler runs", derived:"derived: calling a class runs its constructor" };
+$("#traceGo").onclick = async () => {
+  const out = $("#traceOut"), from = $("#traceFrom").value.trim(), to = $("#traceTo").value.trim(), view = $("#traceView").value;
+  if (!repo) { out.replaceChildren(el("div", {class:"empty"}, "Analyze a repository first.")); return; }
+  if (!from || !to) { out.replaceChildren(el("div", {class:"empty"}, "Choose a start and an end component.")); return; }
+  loading(out, "Tracing...");
+  try {
+    const r = await api(`/api/repositories/${repo.repo_id}/trace?${qs({ source:from, target:to, view })}`);
+    out.replaceChildren();
+    for (const [q, ids] of Object.entries(r.ambiguous || {})) out.append(el("div", {class:"card sev-medium"}, `"${q}" matches several components; using ${short(r.source === ids[0] || r.target === ids[0] ? ids[0] : ids[0])}. Others: ${ids.slice(1).map(short).join(", ")}`));
+    if (!r.paths.length) { out.append(el("div", {class:"empty"}, `No path from ${short(r.source)} to ${short(r.target)} in the ${view} view.` + (view === "execution" ? " Try the impact view to see what depends on what." : ""))); return; }
+    r.paths.slice(0, 5).forEach((p, i) => {
+      const card = el("div", {class:"card flow"}, el("b", {}, `Path ${i + 1}: ${p.nodes.length - 1} hops`), tag("confidence " + p.confidence.toFixed(2)), p.uncertain ? tag("uncertain", "uncertain") : tag("all detected", "detected"));
+      card.append(el("div", {class:"row"}, el("button", {class:"ghost", onclick:() => highlightPath(p.nodes)}, "Highlight in graph")));
+      p.nodes.forEach((n, j) => {
+        card.append(el("div", {class:"step", onclick:() => selectNode(n)}, short(n)));
+        const h = p.hops[j]; if (!h) return;
+        const note = [h.reversed ? HOP_NOTE.reversed : "", h.derived ? HOP_NOTE.derived : ""].filter(Boolean).join("; ");
+        const hop = el("div", {class:"hop"}, `${h.type} `, tag(h.kind, h.kind), ` ${(h.confidence ?? 1).toFixed(2)}`, note ? " " + note : "");
+        const loc = h.evidence && h.evidence[0] && h.evidence[0].location;
+        if (loc) { const c = `${loc.file_path}:${loc.start_line}-${loc.end_line}`; hop.append(" ", el("span", {class:"cite", onclick:() => openCite(c)}, c)); }
+        card.append(hop);
+      });
+      out.append(card);
+    });
+    highlightPath(r.paths[0].nodes);
+  } catch (e) { failure(out, e); }
+};
 
+// ------------------------------------------------------------------ gaps and contracts
 async function loadGaps() {
-  const p = $("#p-gaps"); p.replaceChildren();
-  const [g, sum] = await Promise.all([api(`/api/repositories/${repo.repo_id}/unresolved`), api(`/api/repositories/${repo.repo_id}`)]);
-  p.append(el("div", {class:"chain"}, "What RepoMind could not connect. These are reported, never guessed."));
-  p.append(el("div", {class:"card"}, "Counts by reason: " + (Object.keys(g.counts).length ? JSON.stringify(g.counts) : "none")));
-  for (const err of sum.analysis_errors) p.append(el("div", {class:"card"}, el("span", {class:"tag high"}, "error"), " " + err));
-  for (const u of g.items) p.append(el("div", {class:"card"}, el("span", {class:"tag"}, u.reason), el("div", {class:"chain"}, `${short(u.source_id)} -${u.type}-> ${u.target_id}`),
-    u.detail ? el("div", {class:"chain"}, u.detail) : "", u.location ? el("span", {class:"cite", onclick:() => showSource(u.location.file_path, u.location.start_line, u.location.end_line)}, `${u.location.file_path}:${u.location.start_line}`) : ""));
+  const p = $("#p-gaps"); loading(p);
+  try {
+    const [g, sum] = await Promise.all([api(`/api/repositories/${repo.repo_id}/unresolved`), api(`/api/repositories/${repo.repo_id}`)]);
+    p.replaceChildren();
+    p.append(el("div", {class:"chain"}, "What RepoMind could not connect. These are reported, never guessed."));
+    p.append(el("div", {class:"card"}, "Counts by reason: " + (Object.keys(g.counts).length ? JSON.stringify(g.counts) : "none")));
+    for (const err of sum.analysis_errors) p.append(el("div", {class:"card"}, el("span", {class:"tag high"}, "error"), " " + err));
+    for (const u of g.items) p.append(el("div", {class:"card"}, el("span", {class:"tag"}, u.reason), el("div", {class:"chain"}, `${short(u.source_id)} -${u.type}-> ${u.target_id}`),
+      u.detail ? el("div", {class:"chain"}, u.detail) : "", u.location ? el("span", {class:"cite", onclick:() => showSource(u.location.file_path, u.location.start_line, u.location.end_line)}, `${u.location.file_path}:${u.location.start_line}`) : ""));
+  } catch (e) { failure(p, e); }
 }
+
+async function loadContracts() {
+  const p = $("#p-contracts"); loading(p, "Reading API contracts...");
+  try {
+    const d = await api(`/api/repositories/${repo.repo_id}/contracts`);
+    p.replaceChildren(el("div", {class:"chain"}, "What each endpoint returns and requires, versus what its clients send and read. Read from the code only: \"unknown\" means it could not be determined, not that nothing is sent."),
+      el("div", {class:"card"}, `${d.endpoints.length} endpoint(s), `, el("b", {class: d.issue_count ? "bad" : ""}, `${d.issue_count} issue(s)`)));
+    if (!d.endpoints.length) { p.append(el("div", {class:"empty"}, "No API endpoints found.")); return; }
+    for (const c of d.endpoints) {
+      const card = el("div", {class:"card"}, el("b", {}, short(c.endpoint)), c.handlers.length ? el("span", {class:"tag"}, "handler " + c.handlers.map(short).join(", ")) : tag("no handler", "medium"));
+      card.append(el("div", {class:"chain"}, "returns: " + (c.response_keys && c.response_keys.length ? c.response_keys.join(", ") : "unknown") + (c.response_complete ? "" : " (not fully readable)")));
+      card.append(el("div", {class:"chain"}, "requires: " + (c.request_fields ? Object.entries(c.request_fields).map(([k, req]) => k + (req ? "" : " (optional)")).join(", ") : "unknown")));
+      for (const cl of c.clients) {
+        const row = el("div", {class:"chain item", onclick:() => selectNode(cl.client)}, "client " + short(cl.client) + ": sends " + (cl.sent_keys ? (cl.sent_keys.join(", ") || "nothing") : "unknown") + "; reads " + (cl.read_keys ? cl.read_keys.join(", ") : "unknown"));
+        card.append(row);
+      }
+      for (const i of c.issues) {
+        const issue = el("div", {class:"card sev-" + i.severity}, tag(i.severity, i.severity), " ", i.detail);
+        if (i.location) issue.append(" ", el("span", {class:"cite", onclick:() => openCite(i.location)}, i.location));
+        card.append(issue);
+      }
+      const keys = el("input", {type:"text", placeholder:"response keys to change, e.g. message", "aria-label":"Response keys to change"});
+      const fields = el("input", {type:"text", placeholder:"request fields to change", "aria-label":"Request fields to change"});
+      const out = el("div");
+      const go = el("button", {class:"ghost", onclick:async () => {
+        const split = (t) => t.split(",").map(s => s.trim()).filter(Boolean);
+        if (!split(keys.value).length && !split(fields.value).length) { out.replaceChildren(el("div", {class:"chain"}, "Enter at least one key or field.")); return; }
+        loading(out, "Checking...");
+        try {
+          const r = await api(`/api/repositories/${repo.repo_id}/contracts/impact`, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ endpoint:c.endpoint, response_keys:split(keys.value), request_fields:split(fields.value) }) });
+          out.replaceChildren(el("div", {class:"chain"}, r.handlers.length ? "Handler to update: " + r.handlers.map(short).join(", ") : "No handler change needed."));
+          for (const a of r.clients) out.append(el("div", {class:"card"}, tag(a.certainty, a.certainty), " ", short(a.client), el("div", {class:"chain"}, a.reason)));
+          if (!r.clients.length) out.append(el("div", {class:"chain"}, "No client is affected."));
+          if (r.unaffected_clients.length) out.append(el("div", {class:"chain"}, "Not affected: " + r.unaffected_clients.map(short).join(", ")));
+        } catch (e) { failure(out, e); }
+      }}, "Who breaks?");
+      card.append(el("div", {class:"row"}, keys, fields, go), out);
+      p.append(card);
+    }
+  } catch (e) { failure(p, e); }
+}
+
+// ------------------------------------------------------------------ diff
 $("#diffGo").onclick = async () => {
   const out = $("#diffOut"); out.replaceChildren();
   if (!repo) { out.append(el("div", {class:"empty"}, "Analyze a repository first.")); return; }
+  if (!$("#diffText").value.trim()) { out.append(el("div", {class:"empty"}, "Paste a unified diff first.")); return; }
+  $("#diffGo").disabled = true; loading(out, "Analysing diff...");
   try {
-    const r = await api(`/api/repositories/${repo.repo_id}/impact`, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ diff: $("#diffText").value }) });
-    out.append(el("div", {class:"card"}, el("b", {}, r.target), el("span", {class:"tag " + r.risk}, "risk " + r.risk), el("div", {class:"chain"}, `Blast radius ${r.blast_radius}. ${r.risk_reason}`)));
-    for (const c of [...r.direct, ...r.transitive]) out.append(el("div", {class:"item", onclick:() => selectNode(c.entity_id)}, c.name, el("span", {class:"tag"}, c.category.replace("_"," ")), el("span", {class:"tag" + (c.uncertain ? " uncertain" : "")}, "conf " + c.confidence.toFixed(2))));
-    for (const t of r.suggested_tests) out.append(el("div", {class:"chain"}, "re-run: " + t));
-    if (cy) { const hit = new Set([...r.changed, ...[...r.direct, ...r.transitive].map(c => c.entity_id)]); cy.elements().removeClass("dim impacted source"); cy.elements().addClass("dim"); cy.nodes().filter(n => hit.has(n.id())).removeClass("dim").addClass("impacted"); }
-  } catch (e) { out.append(el("div", {class:"empty"}, "Error: " + e.message)); }
+    const r = await api(`/api/repositories/${repo.repo_id}/impact`, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ diff: $("#diffText").value, strict_references: $("#strictRefs").checked }) });
+    renderImpact(out, r, true);
+  } catch (e) { failure(out, e); } finally { $("#diffGo").disabled = false; }
 };
 
+// ------------------------------------------------------------------ source viewer
 function openCite(c) {
   const m = /^(.+):(\d+)-(\d+)$/.exec(c); if (m) showSource(m[1], +m[2], +m[3]);
 }
 async function showSource(file, start, end) {
-  const pad = 4, s = Math.max(1, start - pad);
-  const d = await api(`/api/repositories/${repo.repo_id}/source?file=${encodeURIComponent(file)}&start=${s}&end=${end + pad}`);
-  const p = $("#p-src"); p.replaceChildren(el("b", {}, `${file}:${start}-${end}`));
-  const pre = el("pre");
-  d.lines.forEach((line, i) => { const n = s + i; const row = el("span", {class: n >= start && n <= end ? "hl" : ""}, el("span", {class:"ln"}, String(n).padStart(3)), line + "\n"); pre.append(row); });
-  p.append(pre); switchTab("src");
+  const pad = 4, s = Math.max(1, start - pad), p = $("#p-src");
+  loading(p, "Loading source..."); switchTab("src");
+  try {
+    const d = await api(`/api/repositories/${repo.repo_id}/source?${qs({ file, start:s, end:end + pad })}`);
+    renderSource(p, file, d.lines, s, start, end);
+  } catch (e) { failure(p, e); }
+}
+async function openFile(file, line = 1) {
+  const p = $("#p-src"); loading(p, "Loading file..."); switchTab("src");
+  try {
+    const d = await api(`/api/repositories/${repo.repo_id}/source?${qs({ file, start:1, end:3000 })}`);
+    renderSource(p, file, d.lines, 1, line, line, d.lines.length >= 3000);
+  } catch (e) { failure(p, e); }
+}
+function renderSource(p, file, lines, first, hlStart, hlEnd, truncated = false) {
+  p.replaceChildren(el("b", {}, hlStart === hlEnd && first === 1 ? file : `${file}:${hlStart}-${hlEnd}`));
+  const num = el("input", {type:"number", min:"1", placeholder:"line", "aria-label":"Go to line", style:"width:80px"});
+  const goto = () => { const n = +num.value; if (n > 0) openFile(file, n); };
+  num.onkeydown = (e) => { if (e.key === "Enter") goto(); };
+  p.append(el("div", {class:"row"}, num, el("button", {class:"ghost", onclick:goto}, "Go to line"), el("button", {class:"ghost", onclick:() => openFile(file, hlStart)}, "Whole file")));
+  if (truncated) p.append(el("div", {class:"chain"}, "Showing the first 3000 lines."));
+  const pre = el("pre"); let target = null;
+  lines.forEach((line, i) => {
+    const n = first + i, hit = n >= hlStart && n <= hlEnd;
+    const row = el("span", {class: hit ? "hl" : ""}, el("span", {class:"ln"}, String(n).padStart(4)), line + "\n"); pre.append(row);
+    if (hit && !target) target = row;
+  });
+  p.append(pre); if (target) target.scrollIntoView({ block:"center" });
 }
 
 function switchTab(name) {
   document.querySelectorAll(".tabs div").forEach(t => t.classList.toggle("on", t.dataset.p === name));
   document.querySelectorAll(".pane").forEach(p => { const on = p.id === "p-" + name; p.classList.toggle("on", on); p.style.display = on ? (name === "ask" ? "flex" : "block") : "none"; });
 }
-document.querySelectorAll(".tabs div").forEach(t => t.onclick = () => switchTab(t.dataset.p));
+document.querySelectorAll(".tabs div").forEach(t => { t.onclick = () => switchTab(t.dataset.p); t.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); switchTab(t.dataset.p); } }; });
 
+// ------------------------------------------------------------------ chat with provider status
+async function loadLlmStatus() {
+  const box = $("#llmStatus");
+  try {
+    const s = await api("/api/llm/status");
+    box.classList.remove("warn"); box.replaceChildren();
+    if (s.fallback) {
+      box.classList.add("warn");
+      box.append(`Requested "${s.requested_provider}" is unavailable (${s.fallback_reason}): answers use the offline template.`);
+    } else if (s.provider === "template") {
+      box.append("Answers: offline template. Nothing leaves this machine.");
+    } else {
+      box.append(`Answers: ${s.provider}${s.model ? " / " + s.model : ""}. `);
+      box.append(el("span", {class:"warn"}, "Repository excerpts are sent to this provider (secrets are redacted on a best-effort basis)."));
+      box.classList.add("warn");
+    }
+    if (!s.external_llm_allowed) box.append(" External LLM calls are disabled on this server.");
+  } catch (e) { box.textContent = "Provider status unavailable: " + e.message; }
+}
+const SUGGESTIONS = ["What is the purpose of this repository?", "What are the main components?", "Which languages and frameworks are used?", "How is the frontend connected to the backend?", "Explain the overall architecture"];
+function renderChips() {
+  const box = $("#chips"); box.replaceChildren();
+  for (const s of SUGGESTIONS) box.append(el("span", {class:"chip", tabindex:"0", onclick:() => { $("#q").value = s; $("#chatform").requestSubmit(); }}, s));
+}
 $("#chatform").onsubmit = async (ev) => {
   ev.preventDefault();
   const q = $("#q").value.trim(); if (!q) return;
   const log = $("#chatlog"); log.append(el("div", {class:"msg u"}, q)); $("#q").value = "";
   if (!repo) { log.append(el("div", {class:"msg a"}, "Analyze a repository first.")); return; }
+  const pending = el("div", {class:"msg a pending"}, "Thinking..."); log.append(pending); log.scrollTop = log.scrollHeight;
+  $("#askBtn").disabled = true;
   try {
     const a = await api(`/api/repositories/${repo.repo_id}/ask`, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ question:q }) });
     const box = el("div", {class:"msg a"}, a.answer);
     if (a.citations.length) { box.append(el("div", {}, "")); for (const c of a.citations) box.append(el("span", {class:"cite", onclick:() => openCite(c)}, c)); }
+    const meta = el("div", {class:"chain"}, `intent: ${a.intent} | answered by: ${a.provider}${a.model ? " / " + a.model : ""}`);
+    if (a.fallback) meta.append(" ", tag(`fallback from ${a.requested_provider}: ${a.fallback_reason}`, "medium"));
+    box.append(meta);
     for (const w of a.warnings) box.append(el("div", {class:"chain"}, "Warning: " + w));
     if (!a.grounded) box.append(el("div", {class:"chain"}, "(not grounded: nothing found in the repository graph)"));
-    log.append(box);
+    pending.replaceWith(box);
     if (a.entities.length && cy) highlightPath(a.entities);
-  } catch (e) { log.append(el("div", {class:"msg a"}, "Error: " + e.message)); }
+  } catch (e) { pending.replaceWith(el("div", {class:"msg a"}, "Error: " + e.message)); }
+  finally { $("#askBtn").disabled = false; }
   log.scrollTop = log.scrollHeight;
 };
 </script>

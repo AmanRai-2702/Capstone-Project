@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections import Counter
 import re
 import threading
 import time
@@ -142,7 +143,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     def summary(repo_id: str) -> dict:
         a = session(repo_id).analysis
+        files = [e for e in a.entities if e.type.value == "file"]
+        source = [e for e in files if e.metadata.get("category") == "source"]
         return {
+            "file_count": len(files), "source_file_count": len(source),
+            "files_by_category": dict(Counter(e.metadata.get("category", "other") for e in files)),
+            "language_counts": dict(Counter(e.language.value for e in source)),
             "repo_id": a.repo_id, "name": a.name, "origin": a.origin,
             "entity_count": a.entity_count, "relationship_count": a.relationship_count,
             "entity_counts_by_type": a.entity_counts_by_type,
@@ -436,6 +442,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"provider": provider.name, "model": getattr(provider, "model", ""), "requested_provider": requested,
                 "fallback": bool(reason), "fallback_reason": reason,
                 "external_llm_allowed": settings.allow_external_llm}
+
+    @api.get("/api/repositories/{repo_id}/overview")
+    def overview(repo_id: str) -> dict:
+        """Deterministic repository summary for the dashboard: README excerpt, languages, technologies,
+        components, endpoints. Built from the graph and the docs; it never calls an LLM."""
+        return session(repo_id).qa.overview()
 
     @api.post("/api/repositories/{repo_id}/ask")
     def ask(repo_id: str, req: AskRequest) -> dict:

@@ -71,6 +71,12 @@ class QAService:
                 "external": self.provider.name not in ("template",),
                 "retrieval_mode": self.retriever.index.mode, "retrieval_requested": self.retriever.index.requested_mode}
 
+    def overview(self) -> dict:
+        """The 'what is this repository' facts as plain data (no provider involved)."""
+        ctx = self.retriever.retrieve("What is the purpose of this repository?")
+        return {"headline": ctx.headline, "facts": [{"text": f.text, "citation": f.citation,
+                                                       "snippet": f.snippet if f.quote else ""} for f in ctx.facts]}
+
     def _repo_summary(self) -> str:
         from collections import Counter
         langs = Counter(e.language.value for e in self.analysis.entities
