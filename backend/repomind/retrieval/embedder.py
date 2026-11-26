@@ -9,11 +9,16 @@ set REPOMIND_EMBEDDER=sentence-transformers). It shares the same interface, so n
 """
 from __future__ import annotations
 
+import hashlib
+import logging
 import math
 import os
 import re
+from pathlib import Path
 from collections import Counter
 from typing import Protocol
+
+log = logging.getLogger(__name__)
 
 Vector = dict[object, float]
 
@@ -73,13 +78,23 @@ class TfidfEmbedder:
 
 
 class SentenceTransformerEmbedder:
-    """Optional dense embeddings. Not exercised by the test-suite (needs a model download)."""
-    name = "sentence-transformers"
+    """Optional dense embeddings (pip install sentence-transformers; downloads the model on first use).
 
-    def __init__(self, model: str = "sentence-transformers/all-MiniLM-L6-v2") -> None:
+    With `cache_dir`, chunk embeddings are stored on disk keyed by a hash of the chunk text, so opening
+    a repository again (or after a small edit) only encodes the chunks that are new. The key includes
+    nothing but the text because each model has its own cache file."""
+    name = "sentence-transformers"
+    MAX_CACHE_ENTRIES = 50_000
+
+    def __init__(self, model: str = "sentence-transformers/all-MiniLM-L6-v2", cache_dir: Path | str | None = None) -> None:
         from sentence_transformers import SentenceTransformer  # lazy: optional dependency
 
+        self.model_name = model
         self._model = SentenceTransformer(model)
+        self._cache_file = (Path(cache_dir) / (re.sub(r"[^A-Za-z0-9_.-]+", "_", model) + ".npz")) if cache_dir else None
+        self._cache: dict[str, object] = {}
+        self.cache_hits = self.cache_misses = 0
+        self._load_cache()
 
     def fit(self, documents: list[str]) -> None:  # nothing to fit; the model is pre-trained
         return None
@@ -87,21 +102,58 @@ class SentenceTransformerEmbedder:
     def embed(self, text: str) -> Vector:
         return _normalise({i: float(v) for i, v in enumerate(self._model.encode(text))})
 
+    @staticmethod
+    def _key(text: str) -> str:
+        return hashlib.sha1(text.encode("utf-8", "replace")).hexdigest()
+
+    def _load_cache(self) -> None:
+        if not self._cache_file or not self._cache_file.exists():
+            return
+        try:
+            import numpy as np
+            with np.load(self._cache_file, allow_pickle=False) as data:
+                self._cache = dict(zip(data["keys"].tolist(), data["vecs"]))
+        except Exception as exc:       # corrupt or from another version: start clean, never fail
+            log.warning("Ignoring unreadable embedding cache %s (%s)", self._cache_file.name, type(exc).__name__)
+            self._cache = {}
+
+    def _save_cache(self) -> None:
+        if not self._cache_file:
+            return
+        try:
+            import numpy as np
+            while len(self._cache) > self.MAX_CACHE_ENTRIES:
+                self._cache.pop(next(iter(self._cache)))          # drop the oldest entries
+            self._cache_file.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self._cache_file.with_name(self._cache_file.name + ".tmp.npz")
+            np.savez(tmp, keys=np.array(list(self._cache), dtype=str), vecs=np.array(list(self._cache.values()), dtype="float32"))
+            tmp.replace(self._cache_file)                          # atomic: a crash cannot leave a half file
+        except OSError as exc:
+            log.warning("Could not save embedding cache (%s)", exc)
+
     def embed_many(self, texts: list[str]) -> list[Vector]:
-        """Batch encoding: far faster than one call per chunk."""
-        return [_normalise({i: float(v) for i, v in enumerate(row)})
-                for row in self._model.encode(texts, batch_size=32, show_progress_bar=False)]
+        """Batch encoding with the on-disk cache: only unseen texts go through the model."""
+        keys = [self._key(t) for t in texts]
+        todo = {k: t for k, t in zip(keys, texts) if k not in self._cache}
+        self.cache_hits += len(texts) - len(todo)
+        self.cache_misses += len(todo)
+        if todo:
+            rows = self._model.encode(list(todo.values()), batch_size=32, show_progress_bar=False)
+            self._cache.update(zip(todo, rows))
+            self._save_cache()
+        return [_normalise({i: float(v) for i, v in enumerate(self._cache[k])}) for k in keys]
 
 
-_DENSE_CACHE: dict[str, "SentenceTransformerEmbedder"] = {}
+_DENSE_CACHE: dict[tuple, "SentenceTransformerEmbedder"] = {}
 
 
-def get_dense_embedder(model: str | None = None) -> "SentenceTransformerEmbedder":
+def get_dense_embedder(model: str | None = None, cache_dir: Path | str | None = None) -> "SentenceTransformerEmbedder":
     """Loads the model once per process (loading takes seconds). Raises if unavailable."""
     model = model or os.getenv("REPOMIND_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-    if model not in _DENSE_CACHE:
-        _DENSE_CACHE[model] = SentenceTransformerEmbedder(model)
-    return _DENSE_CACHE[model]
+    key = (model, str(cache_dir) if cache_dir else None)
+    if key not in _DENSE_CACHE:
+        _DENSE_CACHE[key] = SentenceTransformerEmbedder(model, cache_dir)
+    return _DENSE_CACHE[key]
 
 
 def get_embedder(name: str | None = None) -> Embedder:

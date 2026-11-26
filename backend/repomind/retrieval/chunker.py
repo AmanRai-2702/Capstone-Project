@@ -27,6 +27,7 @@ class Chunk:
     text: str                 # what gets embedded: names + type + source lines
     citation: str | None      # "path:start-end"
     kind: str = "code"        # "code" (a graph entity) or "doc" (README / markdown / config text)
+    etype: str = ""           # entity type value ("function", "html_element", ...); "" for docs
 
 
 def build_chunks(analysis: RepositoryAnalysis, max_lines: int = 40, include_docs: bool = True) -> list[Chunk]:
@@ -51,7 +52,7 @@ def build_chunks(analysis: RepositoryAnalysis, max_lines: int = 40, include_docs
             loc = e.location
             body = "\n".join(lines_of(loc.file_path)[loc.start_line - 1: min(loc.end_line, loc.start_line - 1 + max_lines)])
             citation = f"{loc.file_path}:{loc.start_line}-{loc.end_line}"
-        chunks.append(Chunk(entity_id=e.id, text=f"{header}\n{body}", citation=citation))
+        chunks.append(Chunk(entity_id=e.id, text=f"{header}\n{body}", citation=citation, etype=e.type.value))
     if include_docs:
         chunks.extend(build_doc_chunks(analysis))
     return chunks

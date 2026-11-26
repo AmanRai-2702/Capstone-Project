@@ -85,13 +85,13 @@ def split_identifier(text: str) -> set[str]:
 
 class Retriever:
     def __init__(self, analysis: RepositoryAnalysis, graph: RepositoryGraph, impact: ImpactService,
-                 retrieval_mode: str = "tfidf", embedding_model: str | None = None):
+                 retrieval_mode: str = "tfidf", embedding_model: str | None = None, cache_dir=None):
         self.analysis = analysis
         self.graph = graph
         self.impact = impact
         self.root = Path(analysis.root_path)
         self._file_cache: dict[str, list[str]] = {}
-        self.index = build_index(analysis, graph, retrieval_mode, embedding_model)
+        self.index = build_index(analysis, graph, retrieval_mode, embedding_model, cache_dir)
         self._by_id = {e.id: e for e in analysis.entities}
         self._entity_tokens = {
             e.id: split_identifier(e.name) | split_identifier(e.qualified_name)
@@ -113,8 +113,9 @@ class Retriever:
             return docs if not docs.empty else Context(question=question, intent="none")
         builders = {"impact": self._impact, "relations": self._relations, "locate": self._locate,
                     "flow": self._flow, "explain": self._explain}
-        if intent in ("impact", "relations") and seeds[0][1].id in vector_only:
-            intent = "locate"        # no entity was named: a similarity match is not a safe target to analyse
+        if intent in ("impact", "relations", "explain") and seeds[0][1].id in vector_only:
+            intent = "locate"        # no entity was named: list the most relevant candidates instead of
+                                     # presenting one similarity match as "the" answer
         ctx = builders[intent](question, seeds)
         if ctx.empty and intent != "explain":      # e.g. flow asked about something with no flow
             ctx = self._explain(question, seeds)

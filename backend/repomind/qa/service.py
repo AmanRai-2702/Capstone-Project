@@ -56,7 +56,8 @@ class QAService:
         self.provider = provider or TemplateProvider()
         settings = settings or Settings.from_env()
         self.retriever = Retriever(analysis, self.graph, ImpactService(self.graph),
-                                   settings.retrieval_mode, settings.embedding_model)
+                                   settings.retrieval_mode, settings.embedding_model,
+                                   settings.workspace_dir / "embeddings")
         self._template = TemplateProvider()
         self._files = {e.qualified_name for e in analysis.entities if e.type.value == "file"}
         self._basenames = {p.rsplit("/", 1)[-1] for p in self._files}

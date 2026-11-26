@@ -8,6 +8,7 @@ hit shows its own feature values (`RankedHit.features`):
 * lexical   - TF-IDF cosine, divided by the best lexical score of the query (0..1)
 * semantic  - dense cosine, divided by the best semantic score of the query (0..1)
 * entity    - share of the entity's own name words that appear in the question (0..1)
+* markup    - html/css chunks are multiplied by 0.6 unless the question mentions pages, styling or UI
 * graph     - 1 if the chunk's entity is directly linked in the knowledge graph to one of the
               three best text matches, else 0
 
@@ -27,7 +28,13 @@ from .index import SemanticIndex
 
 MODES = ("tfidf", "dense", "hybrid")
 LEX_FLOOR = 0.12          # raw TF-IDF cosine below this is "no lexical match" (same value Q&A used before)
-SEM_FLOOR = 0.30          # raw dense cosine below this is "no semantic match" (MiniLM: unrelated text is ~0.0-0.2)
+# Raw dense cosine below this is "no semantic match". Calibrated on MiniLM with 24 relevant best hits
+# (23 of them >= 0.23) and 16 off-topic questions (all <= 0.26): a small sample, so the margin is thin.
+SEM_FLOOR = 0.22
+MARKUP_TYPES = {"html_element", "css_selector"}
+MARKUP_PENALTY = 0.6      # markup chunks rank lower unless the question is about pages/styling
+_UI_WORDS = {"page", "html", "element", "button", "form", "input", "style", "css", "selector", "ui", "screen",
+             "layout", "markup", "dom", "tag", "stylesheet", "card", "div", "visual", "widget"}
 # Chosen from a flat optimum on the 24-query set in evaluate_retrieval.py (MRR 0.66-0.72 for every sane
 # weighting), so treat them as reasonable defaults, not tuned results. The entity feature did not help
 # there (the Retriever already links exact names separately), so its default weight is 0.
@@ -69,6 +76,7 @@ class HybridIndex:
         max_lex = max((lex.get(i, 0.0) for i in candidates), default=0.0) or 1.0
         max_sem = max((sem.get(i, 0.0) for i in candidates), default=0.0) or 1.0
         q_tokens = set(tokenize(query))
+        wants_markup = bool(q_tokens & set(tokenize(" ".join(_UI_WORDS))))
         w = self.weights
         hits: dict[int, RankedHit] = {}
         for i in candidates:
@@ -82,6 +90,9 @@ class HybridIndex:
             else:
                 score = (w["lexical"] * feats["lexical"] / max_lex + w["semantic"] * feats["semantic"] / max_sem
                          + w["entity"] * feats["entity"])
+            if self.mode != "tfidf" and not wants_markup and self.chunks[i].etype in MARKUP_TYPES:
+                score *= MARKUP_PENALTY       # "which code ..." should not be answered with an HTML element
+                feats["markup_penalty"] = MARKUP_PENALTY
             hits[i] = RankedHit(self.chunks[i], score, feats)
         if self.mode == "hybrid" and self.neighbors and w["graph"]:
             seeds = sorted(hits.values(), key=lambda h: -h.score)[:3]
@@ -103,7 +114,8 @@ class HybridIndex:
         return [(h.score, h.chunk) for h in hits[:k]]
 
 
-def build_index(analysis, graph, mode: str = "tfidf", embedding_model: str | None = None) -> HybridIndex:
+def build_index(analysis, graph, mode: str = "tfidf", embedding_model: str | None = None,
+                cache_dir=None) -> HybridIndex:
     """Index factory used by the Q&A retriever. Never raises for a missing dense model: it logs and
     degrades to TF-IDF (check `.mode` vs `.requested_mode`)."""
     import logging
@@ -118,7 +130,7 @@ def build_index(analysis, graph, mode: str = "tfidf", embedding_model: str | Non
     dense = None
     if mode in ("dense", "hybrid"):
         try:
-            dense = SemanticIndex(chunks, get_dense_embedder(embedding_model))
+            dense = SemanticIndex(chunks, get_dense_embedder(embedding_model, cache_dir))
         except Exception as exc:   # package or model download unavailable
             logging.getLogger(__name__).warning("Dense embeddings unavailable (%s); using TF-IDF retrieval", type(exc).__name__)
 

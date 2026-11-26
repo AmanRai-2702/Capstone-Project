@@ -86,7 +86,7 @@ def main() -> int:
     svc = AnalysisService(Settings(workspace_dir=Path(tempfile.mkdtemp()), log_level="ERROR"))
     per_method: dict[str, list[dict]] = {}
     latency: dict[str, float] = {}
-    for app in sorted((ROOT / "backend" / "eval_data").glob("retrieval_*.json")):
+    for app in sorted((ROOT / "backend" / "eval_data").glob("retrieval_*_app.json")):
         app_dir = ROOT / "test_apps" / app.stem.removeprefix("retrieval_")
         analysis = svc.analyze(str(app_dir))
         graph = RepositoryGraph.from_analysis(analysis)
