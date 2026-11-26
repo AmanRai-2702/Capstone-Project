@@ -1,0 +1,14 @@
+{"queries": [
+ {"q": "check that the username and password are correct", "relevant": ["python:services/auth_service.py:AuthService.authenticate", "python:app.py:login"]},
+ {"q": "look up a person's record by their numeric id", "relevant": ["python:repositories/user_repository.py:UserRepository.find_by_id", "python:services/auth_service.py:AuthService.get_user", "python:app.py:get_user"]},
+ {"q": "where are the user accounts kept", "relevant": ["python:repositories/user_repository.py:UserRepository", "python:repositories/user_repository.py:UserRepository.find_by_username", "python:repositories/user_repository.py:UserRepository.find_by_id"]},
+ {"q": "show a success or failure text to the visitor", "relevant": ["javascript:static/login.js:showMessage"]},
+ {"q": "send the typed credentials to the server", "relevant": ["javascript:static/login.js:handleLogin", "api:POST:/api/login"]},
+ {"q": "fetch the profile of the signed in person", "relevant": ["javascript:static/login.js:loadProfile", "python:app.py:get_user", "api:GET:/api/users/{user_id}"]},
+ {"q": "serve the main web page", "relevant": ["python:app.py:index", "api:GET:/"]},
+ {"q": "shape of the request body for signing in", "relevant": ["python:app.py:LoginRequest"]},
+ {"q": "AuthService authenticate", "relevant": ["python:services/auth_service.py:AuthService.authenticate"]},
+ {"q": "find_by_username", "relevant": ["python:repositories/user_repository.py:UserRepository.find_by_username"]},
+ {"q": "what runs when the sign in form is submitted", "relevant": ["javascript:static/login.js:handleLogin"]},
+ {"q": "endpoint that returns a user given an id", "relevant": ["python:app.py:get_user", "api:GET:/api/users/{user_id}"]}
+]}

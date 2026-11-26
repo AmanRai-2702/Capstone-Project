@@ -90,7 +90,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     def build_session(analysis: RepositoryAnalysis) -> RepoSession:
         graph = RepositoryGraph.from_analysis(analysis)
-        return RepoSession(analysis, graph, ImpactService(graph), QAService(analysis, graph, provider))
+        return RepoSession(analysis, graph, ImpactService(graph), QAService(analysis, graph, provider, settings))
 
     def session(repo_id: str) -> RepoSession:
         with lock:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 
+from repomind.config import Settings
 from repomind.graph import RepositoryGraph
 from repomind.models import RepositoryAnalysis
 from repomind.services.impact_service import ImpactService
@@ -49,11 +50,13 @@ class QAService:
     """
 
     def __init__(self, analysis: RepositoryAnalysis, graph: RepositoryGraph | None = None,
-                 provider: LLMProvider | None = None):
+                 provider: LLMProvider | None = None, settings: Settings | None = None):
         self.analysis = analysis
         self.graph = graph or RepositoryGraph.from_analysis(analysis)
         self.provider = provider or TemplateProvider()
-        self.retriever = Retriever(analysis, self.graph, ImpactService(self.graph))
+        settings = settings or Settings.from_env()
+        self.retriever = Retriever(analysis, self.graph, ImpactService(self.graph),
+                                   settings.retrieval_mode, settings.embedding_model)
         self._template = TemplateProvider()
         self._files = {e.qualified_name for e in analysis.entities if e.type.value == "file"}
         self._basenames = {p.rsplit("/", 1)[-1] for p in self._files}
@@ -64,7 +67,8 @@ class QAService:
         reason = getattr(self.provider, "fallback_reason", "")
         return {"provider": self.provider.name, "model": getattr(self.provider, "model", ""),
                 "requested_provider": requested, "fallback": bool(reason), "fallback_reason": reason,
-                "external": self.provider.name not in ("template",)}
+                "external": self.provider.name not in ("template",),
+                "retrieval_mode": self.retriever.index.mode, "retrieval_requested": self.retriever.index.requested_mode}
 
     def _repo_summary(self) -> str:
         from collections import Counter

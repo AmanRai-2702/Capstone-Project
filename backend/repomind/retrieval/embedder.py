@@ -87,12 +87,29 @@ class SentenceTransformerEmbedder:
     def embed(self, text: str) -> Vector:
         return _normalise({i: float(v) for i, v in enumerate(self._model.encode(text))})
 
+    def embed_many(self, texts: list[str]) -> list[Vector]:
+        """Batch encoding: far faster than one call per chunk."""
+        return [_normalise({i: float(v) for i, v in enumerate(row)})
+                for row in self._model.encode(texts, batch_size=32, show_progress_bar=False)]
+
+
+_DENSE_CACHE: dict[str, "SentenceTransformerEmbedder"] = {}
+
+
+def get_dense_embedder(model: str | None = None) -> "SentenceTransformerEmbedder":
+    """Loads the model once per process (loading takes seconds). Raises if unavailable."""
+    model = model or os.getenv("REPOMIND_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+    if model not in _DENSE_CACHE:
+        _DENSE_CACHE[model] = SentenceTransformerEmbedder(model)
+    return _DENSE_CACHE[model]
+
 
 def get_embedder(name: str | None = None) -> Embedder:
+    """TF-IDF unless a dense model is requested AND loads; otherwise degrade to TF-IDF."""
     name = (name or os.getenv("REPOMIND_EMBEDDER", "tfidf")).lower()
     if name.startswith("sentence"):
         try:
-            return SentenceTransformerEmbedder()
+            return get_dense_embedder()
         except Exception:  # package or model unavailable -> degrade gracefully
             pass
     return TfidfEmbedder()

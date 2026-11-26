@@ -43,9 +43,15 @@ def test_index_scores_are_cosine_similarities(login):
         assert 0.0 < score <= 1.0001
 
 
-def test_embedder_factory_defaults_to_tfidf_and_degrades_gracefully():
+def test_embedder_factory_defaults_to_tfidf_and_degrades_gracefully(monkeypatch):
+    import repomind.retrieval.embedder as emb
+
+    def unavailable(model=None):
+        raise ImportError("simulated: package or model not available")
+
+    monkeypatch.setattr(emb, "get_dense_embedder", unavailable)
     assert isinstance(get_embedder(), TfidfEmbedder)
-    assert isinstance(get_embedder("sentence-transformers"), (TfidfEmbedder, object))   # falls back if absent
+    assert isinstance(get_embedder("sentence-transformers"), TfidfEmbedder)      # really falls back
 
 
 def test_where_is_question_finds_code_by_meaning_not_name(login):

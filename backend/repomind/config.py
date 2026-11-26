@@ -34,6 +34,10 @@ class Settings:
     max_files: int = 20_000              # resource limit: stop discovery after this many files
     max_zip_mb: int = 200                # resource limit for uploaded/extracted archives
 
+    # --- Retrieval. tfidf = offline default; dense/hybrid need `pip install sentence-transformers`.
+    retrieval_mode: str = "tfidf"        # tfidf | dense | hybrid
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+
     # --- LLM (answer generation). Everything here is read on the server; none of it reaches the browser.
     llm_provider: str = "template"       # template (offline, default) | openrouter | anthropic
     llm_temperature: float = 0.2
@@ -61,6 +65,8 @@ class Settings:
             max_file_bytes=_int_env("REPOMIND_MAX_FILE_BYTES", 1_000_000),
             max_files=_int_env("REPOMIND_MAX_FILES", 20_000),
             max_zip_mb=_int_env("REPOMIND_MAX_ZIP_MB", 200),
+            retrieval_mode=os.getenv("REPOMIND_RETRIEVAL_MODE", "tfidf").strip().lower() or "tfidf",
+            embedding_model=os.getenv("REPOMIND_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2").strip(),
             llm_provider=os.getenv("REPOMIND_LLM_PROVIDER", "template").strip().lower() or "template",
             llm_temperature=_float_env("REPOMIND_LLM_TEMPERATURE", 0.2),
             llm_max_tokens=_int_env("REPOMIND_LLM_MAX_TOKENS", 2048),

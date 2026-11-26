@@ -16,7 +16,7 @@ from collections import Counter
 import networkx as nx
 
 from repomind.models import Entity, RelationType, RepositoryAnalysis
-from repomind.retrieval import SemanticIndex
+from repomind.retrieval.hybrid import build_index
 from repomind.services.impact_service import ImpactError, ImpactService
 
 from .models import Context, Fact
@@ -84,13 +84,14 @@ def split_identifier(text: str) -> set[str]:
 
 
 class Retriever:
-    def __init__(self, analysis: RepositoryAnalysis, graph: RepositoryGraph, impact: ImpactService):
+    def __init__(self, analysis: RepositoryAnalysis, graph: RepositoryGraph, impact: ImpactService,
+                 retrieval_mode: str = "tfidf", embedding_model: str | None = None):
         self.analysis = analysis
         self.graph = graph
         self.impact = impact
         self.root = Path(analysis.root_path)
         self._file_cache: dict[str, list[str]] = {}
-        self.index = SemanticIndex.from_analysis(analysis)
+        self.index = build_index(analysis, graph, retrieval_mode, embedding_model)
         self._by_id = {e.id: e for e in analysis.entities}
         self._entity_tokens = {
             e.id: split_identifier(e.name) | split_identifier(e.qualified_name)

@@ -1,0 +1,14 @@
+{"queries": [
+ {"q": "create a new note from the form", "relevant": ["javascript:static/js/notes.js:addNote", "python:app.py:create_note", "python:services/note_service.py:NoteService.add", "python:repositories/note_repository.py:NoteRepository.insert", "api:POST:/api/notes"]},
+ {"q": "get rid of a note", "relevant": ["javascript:static/js/notes.js:removeNote", "python:app.py:delete_note", "python:services/note_service.py:NoteService.remove", "python:repositories/note_repository.py:NoteRepository.delete", "api:DELETE:/api/notes/<int:note_id>"]},
+ {"q": "return every stored note", "relevant": ["python:app.py:list_notes", "python:services/note_service.py:NoteService.all_notes", "python:repositories/note_repository.py:NoteRepository.list_all", "api:GET:/api/notes"]},
+ {"q": "reject a blank title", "relevant": ["python:services/note_service.py:NoteService._validate"]},
+ {"q": "produce the next unique identifier", "relevant": ["python:repositories/note_repository.py:BaseRepository._next_id"]},
+ {"q": "flash a short toast message to the user", "relevant": ["javascript:static/js/util.js:notify"]},
+ {"q": "draw the list of notes in the page", "relevant": ["javascript:static/js/notes.js:render"]},
+ {"q": "count of notes on the archive page", "relevant": ["javascript:static/js/archive.js:loadArchive"]},
+ {"q": "common parent class for the data stores", "relevant": ["python:repositories/note_repository.py:BaseRepository"]},
+ {"q": "NoteRepository insert", "relevant": ["python:repositories/note_repository.py:NoteRepository.insert"]},
+ {"q": "HTTP handler that deletes a note", "relevant": ["python:app.py:delete_note", "api:DELETE:/api/notes/<int:note_id>"]},
+ {"q": "return the landing page", "relevant": ["python:app.py:home", "api:GET:/"]}
+]}
