@@ -25,7 +25,9 @@ def test_analyze_login_js_entities(analyzer: JavaScriptAnalyzer):
     assert "javascript:static/login.js:loadProfile" in ids
 
     funcs = result.entities_by_type(EntityType.FUNCTION)
-    assert len(funcs) == 3
+    assert len(funcs) == 4                      # 3 named functions + the anonymous #profile-btn click handler
+    anonymous = [f for f in funcs if f.metadata.get("anonymous")]
+    assert [f.name for f in anonymous] == ["#profile-btn click handler"]
 
 
 def test_analyze_login_js_calls(analyzer: JavaScriptAnalyzer):
@@ -103,11 +105,13 @@ def test_analyze_login_js_triggers(analyzer: JavaScriptAnalyzer):
     )
 
     # Arrow function callback: document.getElementById("profile-btn").addEventListener("click", () => loadProfile(1))
-    assert "html:static/index.html:#profile-btn" in trig_map
+    # The callback is an entity of its own: the element triggers it, and it calls loadProfile.
     assert trig_map["html:static/index.html:#profile-btn"] == (
-        "javascript:static/login.js:loadProfile",
-        RelationKind.INFERRED,
+        "javascript:static/login.js:handler@35",
+        RelationKind.DETECTED,
     )
+    calls = {(r.source_id, r.target_id) for r in result.relationships if r.type == RelationType.CALLS}
+    assert ("javascript:static/login.js:handler@35", "javascript:static/login.js:loadProfile") in calls
 
 
 def test_javascript_ground_truth_matches(analyzer: JavaScriptAnalyzer):

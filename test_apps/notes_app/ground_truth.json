@@ -708,6 +708,60 @@
    "STYLES",
    "html:static/index.html:#toast",
    "inferred"
+  ],
+  [
+   "python:repositories/note_repository.py:BaseRepository._next_id",
+   "READS_STATE",
+   "python:repositories/note_repository.py:BaseRepository.__init__",
+   "inferred"
+  ],
+  [
+   "python:repositories/note_repository.py:NoteRepository.delete",
+   "READS_STATE",
+   "python:repositories/note_repository.py:BaseRepository.__init__",
+   "inferred"
+  ],
+  [
+   "python:repositories/note_repository.py:NoteRepository.insert",
+   "READS_STATE",
+   "python:repositories/note_repository.py:BaseRepository.__init__",
+   "inferred"
+  ],
+  [
+   "python:repositories/note_repository.py:NoteRepository.insert",
+   "READS_STATE",
+   "python:repositories/note_repository.py:NoteRepository.delete",
+   "inferred"
+  ],
+  [
+   "python:repositories/note_repository.py:NoteRepository.list_all",
+   "READS_STATE",
+   "python:repositories/note_repository.py:BaseRepository.__init__",
+   "inferred"
+  ],
+  [
+   "python:repositories/note_repository.py:NoteRepository.list_all",
+   "READS_STATE",
+   "python:repositories/note_repository.py:NoteRepository.delete",
+   "inferred"
+  ],
+  [
+   "python:services/note_service.py:NoteService.add",
+   "READS_STATE",
+   "python:services/note_service.py:NoteService.__init__",
+   "inferred"
+  ],
+  [
+   "python:services/note_service.py:NoteService.all_notes",
+   "READS_STATE",
+   "python:services/note_service.py:NoteService.__init__",
+   "inferred"
+  ],
+  [
+   "python:services/note_service.py:NoteService.remove",
+   "READS_STATE",
+   "python:services/note_service.py:NoteService.__init__",
+   "inferred"
   ]
  ],
  "forbidden_relationships": [
@@ -724,5 +778,5 @@
    "detected"
   ]
  ],
- "notes": "Written from the source before the analyzer was run on this app. Known limits: the click handler on dynamically created <li> elements has no static element to link to; .note-done matches nothing (unused)."
+ "notes": "Written from the source before the analyzer was run on this app. Known limits: the click handler on dynamically created <li> elements has no static element to link to; .note-done matches nothing (unused). READS_STATE (added in phase 6): readers of self.rows / self.counter / self.repo depend on the methods that write them, incl. the base-class __init__."
 }

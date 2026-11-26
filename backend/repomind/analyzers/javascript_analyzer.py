@@ -155,6 +155,8 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         self._wrappers = set()
         self._namespaces = {}
         self._axios = {}
+        self._handler_ids = {}                 # tree-sitter node id of an anonymous handler -> its entity id
+        self._handler_entities = set()
 
         tree = self.parser.parse(source_bytes)
         if not tree.root_node:
@@ -325,7 +327,9 @@ class JavaScriptAnalyzer(BaseAnalyzer):
     ) -> None:
         # Check if entering a function scope
         new_func_id = current_func_id
-        if node.type == "function_declaration":
+        if node.id in self._handler_ids:                  # anonymous event handler: its body is attributed to it
+            new_func_id = self._handler_ids[node.id]
+        elif node.type == "function_declaration":
             name_node = node.child_by_field_name("name")
             if name_node:
                 new_func_id = declared_functions.get(name_node.text.decode("utf-8"))
@@ -852,7 +856,9 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         elem_id = f"html:{html_path}:{dom_selector}"
         handler_arg = args_node.named_children[1]
 
-        self._link_event_handler(elem_id, handler_arg, declared_functions, rel_path, loc, snippet, result)
+        first = args_node.named_children[0] if args_node.named_children else None
+        event = _strip_quotes(first.text.decode("utf-8")) if first is not None and first.type == "string" else ""
+        self._link_event_handler(elem_id, handler_arg, declared_functions, rel_path, loc, snippet, result, event=event)
 
     # Real DOM event names, so `el.once = x` or `el.online = y` is not mistaken for a handler.
     _DOM_EVENTS = frozenset((
@@ -881,9 +887,10 @@ class JavaScriptAnalyzer(BaseAnalyzer):
             return
         loc = SourceLocation(file_path=rel_path, start_line=node.start_point[0] + 1, end_line=node.end_point[0] + 1)
         self._link_event_handler(f"html:{html_path}:{selector}", right, declared_functions, rel_path, loc,
-                                 get_snippet(loc.start_line, loc.end_line), result)
+                                 get_snippet(loc.start_line, loc.end_line), result, event=prop.text.decode("utf-8")[2:])
 
-    def _link_event_handler(self, elem_id, handler_arg, declared_functions, rel_path, loc, snippet, result) -> None:
+    def _link_event_handler(self, elem_id, handler_arg, declared_functions, rel_path, loc, snippet, result,
+                            event: str = "") -> None:
         """TRIGGERS edges from an element to what its handler runs: a named function (detected), or every
         function an anonymous callback calls (inferred). Shared by addEventListener and `el.onclick = ...`."""
         # Case 1: Direct identifier handler: addEventListener("submit", handleLogin)
@@ -902,42 +909,39 @@ class JavaScriptAnalyzer(BaseAnalyzer):
                 )
 
         # Case 2: Arrow function or callback: addEventListener("click", () => loadProfile(1))
-        elif handler_arg.type in ("arrow_function", "function"):
-            # Every function the callback calls is something this event triggers (it has no name of its own):
-            # a named function, a named import (`import { loadStats } ...`), or `ns.fn()` on an imported module.
-            targets: list[str] = []
-
-            def collect(n: tree_sitter.Node) -> None:
-                if n.type == "call_expression":
-                    fn_child = n.child_by_field_name("function")
-                    target = None
-                    if fn_child is not None and fn_child.type == "identifier":
-                        name = fn_child.text.decode("utf-8")
-                        if name in declared_functions:
-                            target = declared_functions[name]
-                        elif name in self._imported:
-                            target = make_entity_id("javascript", *self._imported[name])
-                    elif fn_child is not None and fn_child.type == "member_expression":
-                        obj, prop = fn_child.child_by_field_name("object"), fn_child.child_by_field_name("property")
-                        if obj is not None and prop is not None and obj.text.decode("utf-8") in self._namespaces:
-                            target = make_entity_id("javascript", self._namespaces[obj.text.decode("utf-8")],
-                                                    prop.text.decode("utf-8"))
-                    if target and target not in targets:
-                        targets.append(target)
-                for child in n.children:
-                    collect(child)
-
-            self._collect_namespaces_in(handler_arg, rel_path)
-            collect(handler_arg)
-            for target_fn_id in targets:
-                result.add_relationship(
-                    Relationship(
-                        source_id=elem_id,
-                        target_id=target_fn_id,
-                        type=RelationType.TRIGGERS,
-                        kind=RelationKind.INFERRED,
-                        confidence=0.85,
-                        evidence=[Evidence(snippet=snippet, location=loc)],
-                    )
+        elif handler_arg.type in ("arrow_function", "function", "function_expression"):
+            # The callback has no name, so it becomes an entity of its own: the element triggers it, and
+            # everything inside (calls, requests, DOM lookups) is attributed to it instead of the file.
+            handler_id = self._register_handler(handler_arg, elem_id, event, rel_path, result)
+            result.add_relationship(
+                Relationship(
+                    source_id=elem_id,
+                    target_id=handler_id,
+                    type=RelationType.TRIGGERS,
+                    kind=RelationKind.DETECTED,
+                    confidence=1.0,
+                    evidence=[Evidence(snippet=snippet, location=loc)],
                 )
+            )
 
+    def _register_handler(self, node, elem_id: str, event: str, rel_path: str, result: AnalysisResult) -> str:
+        """Create (once) the entity for an anonymous handler and return its id."""
+        if node.id in self._handler_ids:
+            return self._handler_ids[node.id]
+        line, col = node.start_point[0] + 1, node.start_point[1]
+        handler_id = make_entity_id("javascript", rel_path, f"handler@{line}")
+        if handler_id in self._handler_entities:            # two handlers starting on the same line
+            handler_id = make_entity_id("javascript", rel_path, f"handler@{line}:{col}")
+        self._handler_entities.add(handler_id)
+        self._handler_ids[node.id] = handler_id
+        selector = elem_id.split(":", 2)[2]
+        name = f"{selector} {event or 'event'} handler"
+        file_id = make_file_id(rel_path)
+        result.add_entity(Entity(
+            id=handler_id, type=EntityType.FUNCTION, name=name, qualified_name=name, language=Language.JAVASCRIPT,
+            location=SourceLocation(file_path=rel_path, start_line=line, end_line=node.end_point[0] + 1,
+                                    start_col=col, end_col=node.end_point[1]),
+            parent_id=file_id, metadata={"anonymous": True, "event": event, "element": elem_id}))
+        result.add_relationship(Relationship(source_id=file_id, target_id=handler_id, type=RelationType.CONTAINS,
+                                             kind=RelationKind.DETECTED, confidence=1.0))
+        return handler_id

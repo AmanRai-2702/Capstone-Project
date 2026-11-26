@@ -74,7 +74,8 @@ PHRASE = {
     "TRIGGERS": "triggers", "REQUESTS": "sends a request to", "HANDLES": "is handled by",
     "CALLS": "calls", "REFERENCES": "references", "IMPORTS": "imports", "STYLES": "styles",
     "CONTAINS": "contains", "INHERITS": "inherits from", "USES": "uses",
-    "CONSTRUCTS": "runs the constructor",
+    "CONSTRUCTS": "runs the constructor", "RETURNS": "returns an instance of",
+    "DATA_FLOW": "is given data produced by", "READS_STATE": "reads state written by",
 }
 
 

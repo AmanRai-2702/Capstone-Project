@@ -182,7 +182,7 @@ def test_select_nodes_filters_combine(login):
     funcs = login.select_nodes(types=["function"])
     assert funcs and all(login.entities[n].type.value == "function" for n in funcs)
     js = login.select_nodes(types=["function"], languages=["javascript"])
-    assert {n.split(":")[-1] for n in js} == {"showMessage", "handleLogin", "loadProfile"}
+    assert {n.split(":")[-1] for n in js} == {"showMessage", "handleLogin", "loadProfile", "handler@35"}
     assert login.select_nodes(query="AUTHENTICATE") == {AUTH}
     assert all(not n.startswith("file:") for n in login.select_nodes(include_files=False))
 

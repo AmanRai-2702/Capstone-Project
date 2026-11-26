@@ -38,6 +38,9 @@ class RelationType(StrEnum):
     DEPENDS_ON = "DEPENDS_ON"
     INHERITS = "INHERITS"    # class -> base class
     USES = "USES"            # function -> class/type it depends on (e.g. request model)
+    RETURNS = "RETURNS"      # function -> class of the value it returns (annotation or `return Foo(...)`)
+    DATA_FLOW = "DATA_FLOW"  # consumer -> producer: the consumer is passed a value the producer created
+    READS_STATE = "READS_STATE"  # method -> method that writes a `self.attr` the first one reads
 
 
 class RelationKind(StrEnum):

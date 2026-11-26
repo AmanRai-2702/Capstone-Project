@@ -45,6 +45,9 @@ DEPENDENCY_EDGES: dict[RelationType, bool] = {
     RelationType.INHERITS: False,    # subclass depends on base class
     RelationType.USES: False,        # user depends on the type it uses
     RelationType.STYLES: True,       # element's appearance depends on the CSS rule
+    RelationType.RETURNS: False,     # a function depends on the class of the value it returns
+    RelationType.DATA_FLOW: False,   # a consumer depends on the producer of the value it is given
+    RelationType.READS_STATE: False,  # a method depends on the method that writes the attribute it reads
 }
 
 
@@ -81,7 +84,7 @@ class RepositoryGraph:
             graph.g.add_edge(
                 r.source_id, r.target_id, key=r.type.value,
                 type=r.type.value, kind=r.kind.value, confidence=r.confidence,
-                evidence=[ev.model_dump() for ev in r.evidence],
+                evidence=[ev.model_dump() for ev in r.evidence], metadata=dict(r.metadata),
             )
         return graph
 
@@ -378,7 +381,8 @@ class RepositoryGraph:
         if data is None:
             return None
         return {"id": f"{source}|{data['type']}|{target}", "source": source, "target": target, "type": data["type"],
-                "kind": data["kind"], "confidence": data["confidence"], "evidence": data["evidence"]}
+                "kind": data["kind"], "confidence": data["confidence"], "evidence": data["evidence"],
+                "metadata": data.get("metadata", {})}
 
     def module_graph(self, rel_types: Iterable[str] = COUPLING_TYPES) -> dict:
         """The graph collapsed to FILES, for large repositories: one node per source file, one edge per

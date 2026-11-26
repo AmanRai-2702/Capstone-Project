@@ -16,6 +16,7 @@ from repomind.models import (
     make_file_id,
 )
 from .base import AnalysisResult, BaseAnalyzer
+from .python_types import TypeIndex
 
 log = logging.getLogger(__name__)
 
@@ -29,8 +30,10 @@ class PythonASTVisitor(ast.NodeVisitor):
     FastAPI endpoints, and method/function calls.
     """
 
-    def __init__(self, rel_path: str, source_lines: list[str], tree: ast.AST | None = None):
+    def __init__(self, rel_path: str, source_lines: list[str], tree: ast.AST | None = None,
+                 types: TypeIndex | None = None):
         self.rel_path = rel_path.replace("\\", "/")
+        self.types = types
         self.source_lines = source_lines
         self.result = AnalysisResult()
 
@@ -43,6 +46,16 @@ class PythonASTVisitor(ast.NodeVisitor):
         self.imported_symbols: dict[str, str] = {}
         # e.g. "auth_service": "AuthService", "self.users": "UserRepository"
         self.var_types: dict[str, str] = {}
+        # Variables whose class came from the repository-wide type index: name -> (defining file, class name)
+        self.var_refs: dict[str, tuple[str, str]] = {}
+        # name -> entity id of the call whose result it holds (`order = Order(...)`): feeds DATA_FLOW edges
+        self.producers: dict[str, str] = {}
+        self._call_targets: dict[int, str] = {}          # id(ast.Call) -> entity id it was resolved to
+        # `self.attr` bookkeeping per class, for READS_STATE: attr -> {method id: location}
+        self.attr_writes: dict[str, dict[str, SourceLocation]] = {}
+        self.attr_reads: dict[str, dict[str, SourceLocation]] = {}
+        self.class_attr_writes: dict[str, dict[str, dict[str, SourceLocation]]] = {}   # class -> attr -> method -> loc
+        self.class_attr_reads: dict[str, dict[str, dict[str, SourceLocation]]] = {}
         # `import services.pricing as pr` -> {"pr": "services/pricing.py"}; `import a.b` -> {"a.b": "a/b.py"}
         self.module_aliases: dict[str, str] = {}
 
@@ -53,10 +66,14 @@ class PythonASTVisitor(ast.NodeVisitor):
         self.class_methods: dict[str, set[str]] = {}
         self.class_bases: dict[str, list[str]] = {}
         if tree is not None:
+            # Functions defined inside other functions (factories like `def create_app(): def session(): ...`) are
+            # callable from their siblings, so they count too. Methods (directly in a class body) do not.
+            methods = {id(f) for c in ast.walk(tree) if isinstance(c, ast.ClassDef)
+                       for f in c.body if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))}
+            self.local_functions |= {n.name for n in ast.walk(tree)
+                                     if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and id(n) not in methods}
             for node in getattr(tree, "body", []):
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    self.local_functions.add(node.name)
-                elif isinstance(node, ast.ClassDef):
+                if isinstance(node, ast.ClassDef):
                     self.local_classes.add(node.name)
                     self.class_bases[node.name] = [b.id for b in node.bases if isinstance(b, ast.Name)]
                     self.class_methods[node.name] = {
@@ -189,6 +206,63 @@ class PythonASTVisitor(ast.NodeVisitor):
             return f"{target.value.id}.{target.attr}"          # e.g. "self.users"
         return None
 
+    # ------------------------------------------------------------------ expression types
+    def _class_ref(self, name: str | None, prefer: str | None = None) -> tuple[str, str] | None:
+        """(defining file, class) for a class NAME as seen from this file; None if unknown or ambiguous."""
+        if not name:
+            return None
+        if name in self.local_classes:
+            return self.rel_path, name
+        if self.types is not None:
+            ref = self.types.resolve_class(name, prefer)
+            if ref:
+                return ref
+        if name in self.imported_symbols:
+            return self.imported_symbols[name], name
+        return None
+
+    def _expr_ref(self, e: ast.expr | None) -> tuple[str, str] | None:
+        """The class an expression evaluates to, when statically clear:  self, a typed variable, `x.attr`
+        (attribute annotations), `f()` (return annotation), `Foo()` (instantiation), `obj.method()` (return
+        annotation), `await ...`. Anything else is None - no guess."""
+        if isinstance(e, ast.Await):
+            return self._expr_ref(e.value)
+        if isinstance(e, ast.Name):
+            if e.id == "self" and self.class_stack:
+                return self.rel_path, self.class_stack[-1]
+            if e.id in self.var_refs:
+                return self.var_refs[e.id]
+            return self._class_ref(self.var_types.get(e.id))
+        if isinstance(e, ast.Attribute):
+            key = self._target_key(e)
+            if key and key in self.var_refs:
+                return self.var_refs[key]
+            if key and key in self.var_types:
+                return self._class_ref(self.var_types[key])
+            base = self._expr_ref(e.value)
+            if base and self.types is not None:
+                return self._class_ref(self.types.attrs.get(base, {}).get(e.attr), base[0])
+            return None
+        if isinstance(e, ast.Call):
+            f = e.func
+            if isinstance(f, ast.Name):
+                if f.id in self.local_classes or (f.id in self.imported_symbols and f.id[:1].isupper()):
+                    return self._class_ref(f.id)
+                if self.types is not None:
+                    ret = self.types.function_return(
+                        f.id, self.rel_path if f.id in self.local_functions else None, self.imported_symbols.get(f.id))
+                    if ret:
+                        return ret
+                return None
+            if isinstance(f, ast.Attribute) and self.types is not None:
+                base = self._expr_ref(f.value)
+                if base:
+                    return self._class_ref(self.types.method_returns.get(base, {}).get(f.attr), base[0])
+                mod = self.module_aliases.get(self._dotted(f.value) or "")
+                if mod:
+                    return self.types.function_return(f.attr, mod, mod)
+        return None
+
     def _value_class(self, value: ast.expr) -> str | None:
         """Class an assigned expression evaluates to, when that is statically clear:
         Foo()                      constructor call
@@ -196,7 +270,16 @@ class PythonASTVisitor(ast.NodeVisitor):
         a or Foo()  /  Foo() if c else b     the first operand that has a known class
         """
         if isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
-            return value.func.id if value.func.id in self.local_classes or value.func.id in self.imported_symbols else None
+            name = value.func.id
+            if name in self.local_classes:
+                return name
+            if name in self.imported_symbols:
+                if self.types is not None:        # an imported *function* (make_store()) is not a class
+                    if name in self.types.classes:
+                        return name
+                    return None if (name in self.types.func_returns or not name[:1].isupper()) else name
+                return name
+            return None
         if isinstance(value, (ast.Name, ast.Attribute)):
             key = self._target_key(value)
             return self.var_types.get(key) if key else None
@@ -210,12 +293,63 @@ class PythonASTVisitor(ast.NodeVisitor):
         """Track what a variable holds (see _value_class), so `x = Foo(); x.run()` and
         `repo = self.repo; repo.get()` resolve to Foo.run / the repository's get."""
         cls_name = self._value_class(node.value)
-        if cls_name:
-            for target in node.targets:
-                key = self._target_key(target)
-                if key:
-                    self.var_types[key] = cls_name
+        ref = self._expr_ref(node.value)
+        for target in node.targets:
+            key = self._target_key(target)
+            if key and cls_name:
+                self.var_types[key] = cls_name
+            if key and ref:
+                self.var_refs[key] = ref
+            elif key and not cls_name:
+                self.var_refs.pop(key, None)
+            self._record_attr_write(target, node)
+        self.generic_visit(node)           # visiting the value resolves its calls, so producers can be read now
+        value = node.value.value if isinstance(node.value, ast.Await) else node.value
+        produced = self._call_targets.get(id(value)) if isinstance(value, ast.Call) else None
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                if produced:
+                    self.producers[target.id] = produced
+                else:
+                    self.producers.pop(target.id, None)         # reassigned: no longer holds that result
+
+    def _record_attr_write(self, target: ast.expr, node: ast.AST) -> None:
+        if (self.current_callable_id and self.class_stack and isinstance(target, ast.Attribute)
+                and isinstance(target.value, ast.Name) and target.value.id == "self"):
+            self.attr_writes.setdefault(target.attr, {}).setdefault(self.current_callable_id, SourceLocation(
+                file_path=self.rel_path, start_line=node.lineno, end_line=node.end_lineno or node.lineno))
+
+    def visit_AugAssign(self, node: ast.AugAssign) -> None:
+        self._record_attr_write(node.target, node)
+        if isinstance(node.target, ast.Attribute):           # `self.n += 1` also reads self.n
+            self._record_attr_read(node.target, node)
         self.generic_visit(node)
+
+    def _record_attr_read(self, node: ast.Attribute, at: ast.AST) -> None:
+        if (self.current_callable_id and self.class_stack and isinstance(node.value, ast.Name)
+                and node.value.id == "self" and node.attr not in self.class_methods.get(self.class_stack[-1], ())):
+            self.attr_reads.setdefault(node.attr, {}).setdefault(self.current_callable_id, SourceLocation(
+                file_path=self.rel_path, start_line=at.lineno, end_line=at.end_lineno or at.lineno))
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:
+        if isinstance(node.ctx, ast.Load):
+            self._record_attr_read(node, node)
+        self.generic_visit(node)
+
+    def visit_Return(self, node: ast.Return) -> None:
+        """`return Foo(...)` / `return typed_var`: the function RETURNS that class (inferred)."""
+        if self.current_callable_id and node.value is not None:
+            ref = self._expr_ref(node.value)
+            if ref:
+                self._add_returns(ref, node, RelationKind.INFERRED, 0.8)
+        self.generic_visit(node)
+
+    def _add_returns(self, ref: tuple[str, str], at: ast.AST, kind: RelationKind, confidence: float) -> None:
+        loc = SourceLocation(file_path=self.rel_path, start_line=at.lineno, end_line=at.end_lineno or at.lineno)
+        self.result.add_relationship(Relationship(
+            source_id=self.current_callable_id, target_id=make_entity_id("python", ref[0], ref[1]),
+            type=RelationType.RETURNS, kind=kind, confidence=confidence,
+            evidence=[Evidence(snippet=self._get_snippet(loc.start_line, loc.end_line), location=loc)]))
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         """x: Foo = ...  /  self.x: Foo = ...  (the annotation wins over the value)."""
@@ -284,9 +418,35 @@ class PythonASTVisitor(ast.NodeVisitor):
                     )
                 )
 
+        outer_writes, outer_reads = self.attr_writes, self.attr_reads
+        self.attr_writes, self.attr_reads = {}, {}
         self.class_stack.append(node.name)
         self.generic_visit(node)
         self.class_stack.pop()
+        self.class_attr_writes[node.name], self.class_attr_reads[node.name] = self.attr_writes, self.attr_reads
+        self.attr_writes, self.attr_reads = outer_writes, outer_reads
+
+    def finalize(self) -> None:
+        """Once the whole module has been visited: a method that reads `self.x` depends on every method that
+        writes `self.x` - in its own class or in a base class defined in this file - `__init__` included.
+        Change what the writer stores and the reader may break. Inferred: we do not know which write the
+        reader actually sees at runtime. (Bases from other files are not followed.)"""
+        for cls, reads in self.class_attr_reads.items():
+            chain, queue = [], [cls]
+            while queue:                                            # the class and its local ancestors
+                c = queue.pop(0)
+                if c not in chain:
+                    chain.append(c)
+                    queue.extend(self.class_bases.get(c, []))
+            for attr, readers in reads.items():
+                writers = {w: loc for c in chain for w, loc in self.class_attr_writes.get(c, {}).get(attr, {}).items()}
+                for reader, loc in readers.items():
+                    for writer in writers:
+                        if writer != reader:
+                            self.result.add_relationship(Relationship(
+                                source_id=reader, target_id=writer, type=RelationType.READS_STATE,
+                                kind=RelationKind.INFERRED, confidence=0.8,
+                                evidence=[Evidence(snippet=self._get_snippet(loc.start_line, loc.end_line), location=loc)]))
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._handle_function(node)
@@ -377,6 +537,11 @@ class PythonASTVisitor(ast.NodeVisitor):
         prev_callable = self.current_callable_id
         self.current_callable_id = entity_id
         outer_types = dict(self.var_types)
+        outer_refs, outer_producers = dict(self.var_refs), self.producers
+        self.producers = {}
+        returned = self._class_ref(self._annotation_class(node.returns))
+        if returned:                                          # def f(...) -> Foo
+            self._add_returns(returned, node, RelationKind.DETECTED, 1.0)
         for arg in [*node.args.args, *node.args.kwonlyargs]:
             cls = self._annotation_class(arg.annotation)
             if cls and arg.arg not in ("self", "cls"):
@@ -386,6 +551,8 @@ class PythonASTVisitor(ast.NodeVisitor):
         # Locals and parameters must not leak into the next function; `self.x` attributes do persist
         # (they are set in __init__ and used by other methods).
         self.var_types = {**outer_types, **{k: v for k, v in self.var_types.items() if k.startswith("self.")}}
+        self.var_refs = {**outer_refs, **{k: v for k, v in self.var_refs.items() if k.startswith("self.")}}
+        self.producers = outer_producers
         self.current_callable_id = prev_callable
 
     def _check_route_decorators(
@@ -464,6 +631,7 @@ class PythonASTVisitor(ast.NodeVisitor):
             end_line=node.end_lineno or node.lineno,
         )
         snippet = self._get_snippet(node.lineno, node.end_lineno or node.lineno)
+        first_new = len(self.result.relationships)
 
         # Case 1: Method call on variable or attribute, e.g. auth_service.authenticate() or self.users.find_by_id()
         if isinstance(node.func, ast.Attribute):
@@ -504,6 +672,21 @@ class PythonASTVisitor(ast.NodeVisitor):
             elif isinstance(node.func.value, ast.Attribute) and isinstance(node.func.value.value, ast.Name):
                 receiver = f"{node.func.value.value.id}.{node.func.value.attr}"  # e.g. "self.users"
 
+            handled = owner is not None or (receiver and receiver in self.var_types)
+            if not handled and self.types is not None:
+                # `session(id).qa.ask()`, `x.attr.method()`: the receiver is an expression, not a plain name.
+                ref = self._expr_ref(node.func.value)
+                if ref:
+                    self.result.add_relationship(
+                        Relationship(
+                            source_id=self.current_callable_id,
+                            target_id=make_entity_id("python", ref[0], f"{ref[1]}.{method_name}"),
+                            type=RelationType.CALLS,
+                            kind=RelationKind.INFERRED,
+                            confidence=0.8,
+                            evidence=[Evidence(snippet=snippet, location=call_loc)],
+                        )
+                    )
             if receiver and receiver in self.var_types:
                 cls_name = self.var_types[receiver]
                 mod_path = self.imported_symbols.get(cls_name) or (
@@ -553,11 +736,43 @@ class PythonASTVisitor(ast.NodeVisitor):
                     )
                 )
 
-        self.generic_visit(node)
+        resolved = [r.target_id for r in self.result.relationships[first_new:] if r.type == RelationType.CALLS]
+        if resolved:
+            self._call_targets[id(node)] = resolved[0]
+        self.generic_visit(node)               # nested calls (arguments) are resolved before we look at data flow
+        self._emit_data_flow(node, snippet, call_loc)
+
+    def _emit_data_flow(self, node: ast.Call, snippet: str, loc: SourceLocation) -> None:
+        """`g(x)` where `x = f(...)` (or `g(f(...))`, `g(x.attr)`): g consumes data that f produced, so a change to
+        f's result can break g. Only resolved calls take part; the edge is inferred, never certain."""
+        consumer = self._call_targets.get(id(node))
+        if not consumer:
+            return
+        for arg in [*node.args, *(k.value for k in node.keywords)]:
+            arg = arg.value if isinstance(arg, (ast.Starred, ast.Await)) else arg
+            if isinstance(arg, ast.Call):
+                producer = self._call_targets.get(id(arg))
+            else:
+                root = arg
+                while isinstance(root, (ast.Attribute, ast.Subscript)):
+                    root = root.value
+                producer = self.producers.get(root.id) if isinstance(root, ast.Name) else None
+            if producer and producer != consumer and producer != self.current_callable_id:
+                self.result.add_relationship(Relationship(
+                    source_id=consumer, target_id=producer, type=RelationType.DATA_FLOW,
+                    kind=RelationKind.INFERRED, confidence=0.7, evidence=[Evidence(snippet=snippet, location=loc)]))
 
 
 class PythonAnalyzer(BaseAnalyzer):
     """Parses Python source files using Python's standard library ast module."""
+
+    def __init__(self) -> None:
+        self._types: TypeIndex | None = None
+
+    def prepare(self, files: dict[str, str]) -> None:
+        """Optional first pass over every Python file (path -> source): builds the repository-wide type index
+        (return annotations, attribute types) used to resolve calls like `session(id).qa.ask()`."""
+        self._types = TypeIndex.build({k.replace("\\", "/"): v for k, v in files.items()})
 
     def analyze_file(self, rel_path: str, content: str) -> AnalysisResult:
         try:
@@ -567,6 +782,7 @@ class PythonAnalyzer(BaseAnalyzer):
             return AnalysisResult(errors=[f"{rel_path}: syntax error at line {err.lineno}: {err.msg}"])
 
         source_lines = content.splitlines()
-        visitor = PythonASTVisitor(rel_path=rel_path, source_lines=source_lines, tree=tree)
+        visitor = PythonASTVisitor(rel_path=rel_path, source_lines=source_lines, tree=tree, types=self._types)
         visitor.visit(tree)
+        visitor.finalize()
         return visitor.result

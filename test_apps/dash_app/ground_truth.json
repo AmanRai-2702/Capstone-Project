@@ -57,6 +57,18 @@
   [
    "javascript:static/js/main.js:hover",
    "function"
+  ],
+  [
+   "javascript:static/js/main.js:handler@8",
+   "function"
+  ],
+  [
+   "javascript:static/js/main.js:handler@15",
+   "function"
+  ],
+  [
+   "javascript:static/js/main.js:handler@21",
+   "function"
   ]
  ],
  "relationships": [
@@ -163,36 +175,6 @@
    "detected"
   ],
   [
-   "html:static/index.html:#refresh",
-   "TRIGGERS",
-   "javascript:static/js/api.js:loadStats",
-   "inferred"
-  ],
-  [
-   "html:static/index.html:#refresh",
-   "TRIGGERS",
-   "javascript:static/js/main.js:showStats",
-   "inferred"
-  ],
-  [
-   "html:static/index.html:#refresh",
-   "TRIGGERS",
-   "javascript:static/js/charts.js:drawChart",
-   "inferred"
-  ],
-  [
-   "html:static/index.html:#add",
-   "TRIGGERS",
-   "javascript:static/js/api.js:addItem",
-   "inferred"
-  ],
-  [
-   "html:static/index.html:#stats",
-   "TRIGGERS",
-   "javascript:static/js/main.js:showStats",
-   "inferred"
-  ],
-  [
    "html:static/index.html:#chart",
    "TRIGGERS",
    "javascript:static/js/main.js:hover",
@@ -202,6 +184,54 @@
    "file:static/js/main.js",
    "REFERENCES",
    "html:static/index.html:#chart",
+   "detected"
+  ],
+  [
+   "html:static/index.html:#refresh",
+   "TRIGGERS",
+   "javascript:static/js/main.js:handler@8",
+   "detected"
+  ],
+  [
+   "javascript:static/js/main.js:handler@8",
+   "CALLS",
+   "javascript:static/js/api.js:loadStats",
+   "detected"
+  ],
+  [
+   "javascript:static/js/main.js:handler@8",
+   "CALLS",
+   "javascript:static/js/main.js:showStats",
+   "detected"
+  ],
+  [
+   "javascript:static/js/main.js:handler@8",
+   "CALLS",
+   "javascript:static/js/charts.js:drawChart",
+   "detected"
+  ],
+  [
+   "html:static/index.html:#add",
+   "TRIGGERS",
+   "javascript:static/js/main.js:handler@15",
+   "detected"
+  ],
+  [
+   "javascript:static/js/main.js:handler@15",
+   "CALLS",
+   "javascript:static/js/api.js:addItem",
+   "detected"
+  ],
+  [
+   "html:static/index.html:#stats",
+   "TRIGGERS",
+   "javascript:static/js/main.js:handler@21",
+   "detected"
+  ],
+  [
+   "javascript:static/js/main.js:handler@21",
+   "CALLS",
+   "javascript:static/js/main.js:showStats",
    "detected"
   ]
  ],
@@ -229,7 +259,25 @@
    "TRIGGERS",
    "javascript:static/js/main.js:showStats",
    "inferred"
+  ],
+  [
+   "javascript:static/js/main.js:handler@15",
+   "CALLS",
+   "javascript:static/js/api.js:loadStats",
+   "detected"
+  ],
+  [
+   "javascript:static/js/main.js:handler@8",
+   "CALLS",
+   "javascript:static/js/api.js:addItem",
+   "detected"
+  ],
+  [
+   "html:static/index.html:#add",
+   "TRIGGERS",
+   "javascript:static/js/main.js:handler@8",
+   "detected"
   ]
  ],
- "notes": "Probe app, written from the source before analysis. Targets: axios requests, dynamic import(), anonymous event handlers (attributed to the element, not leaked between handlers), `$()` DOM helper imported from another module, namespace calls on a dynamically imported module."
+ "notes": "Probe app, written from the source before analysis. Targets: axios requests, dynamic import(), anonymous event handlers (attributed to the element, not leaked between handlers), `$()` DOM helper imported from another module, namespace calls on a dynamically imported module. Phase 6: anonymous handlers are entities (handler@LINE); the element TRIGGERS the handler, the handler CALLS what it calls."
 }

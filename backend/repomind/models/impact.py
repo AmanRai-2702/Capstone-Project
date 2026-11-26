@@ -21,6 +21,7 @@ class ImpactedComponent(BaseModel):
     distance: int                       # 1 = direct dependent, 2+ = transitive
     # direct         - depends on the changed component itself
     # execution_flow - reached only through execution edges (CALLS/REQUESTS/HANDLES/TRIGGERS)
+    # data_flow      - execution edges plus at least one data edge (DATA_FLOW/RETURNS/READS_STATE)
     # indirect       - reached through structural edges too (IMPORTS/REFERENCES/STYLES/INHERITS/USES)
     category: str
     uncertain: bool                     # some hop is inferred/heuristic, or confidence < 0.8

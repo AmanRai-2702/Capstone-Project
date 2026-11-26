@@ -79,8 +79,10 @@ class AnalysisService:
             inline_scripts.extend((hf.path, offset, text) for offset, text in res.inline_scripts)
 
         # Phase 2: Parse Python files
+        py_sources = {pf.path: self._read_file(root / pf.path) for pf in python_files}
+        self.python_analyzer.prepare(py_sources)          # repository-wide return/attribute types
         for pf in python_files:
-            content = self._read_file(root / pf.path)
+            content = py_sources[pf.path]
             res = self._safe(self.python_analyzer.analyze_file, pf.path, content, errors=errors)
             self._merge_results(res.entities, res.relationships, all_entities, all_relationships)
 

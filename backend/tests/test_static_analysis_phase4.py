@@ -225,7 +225,13 @@ document.getElementById("go").addEventListener("click", () => { one(); two(); })
 document.getElementById("out").addEventListener("click", () => three());
 ''')
     trig = {(s.split(":", 2)[2], t.split(":", 2)[2]) for s, _, t, _ in edges(a, "TRIGGERS")}
-    assert trig == {("#go", "one"), ("#go", "two"), ("#out", "three")}       # each handler only its own callees
+    assert trig == {("#go", "handler@4"), ("#out", "handler@5")}          # each element its own handler
+    calls = {(s.split(":", 2)[2], t.split(":", 2)[2]) for s, _, t, _ in edges(a, "CALLS")}
+    assert {("handler@4", "one"), ("handler@4", "two"), ("handler@5", "three")} <= calls
+    assert not {c for c in calls if c[0] == "handler@5" and c[1] in ("one", "two")}   # no leaking
+    handlers = [e for e in a.entities if e.metadata.get("anonymous")]
+    assert {e.name for e in handlers} == {"#go click handler", "#out click handler"}
+    assert all(e.metadata["element"].startswith("html:index.html:#") for e in handlers)
 
 
 def test_handler_on_an_unknown_element_triggers_nothing(tmp_path):
@@ -332,9 +338,10 @@ const btn = document.getElementById("go");
 btn.onmouseover = other;
 ''')
     trig = {(s.split(":", 2)[2], t.split(":", 2)[2], k) for s, _, t, k in edges(a, "TRIGGERS")}
-    assert ("#go", "inner", "inferred") in trig            # anonymous handler -> what it calls
-    assert ("#out", "named", "detected") in trig           # named handler
-    assert ("#go", "other", "detected") in trig            # element held in a variable
+    assert ("#go", "handler@5", "detected") in trig  # anonymous handler is an entity the element triggers
+    assert ("#out", "named", "detected") in trig     # named handler
+    assert ("#go", "other", "detected") in trig      # element held in a variable
+    assert ("javascript:app.js:handler@5", "CALLS", "javascript:app.js:inner", "detected") in edges(a, "CALLS")
 
 
 def test_property_handlers_on_unknown_elements_or_non_event_properties_are_ignored(tmp_path):

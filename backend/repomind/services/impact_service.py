@@ -11,9 +11,12 @@ so those are used as the BFS sources.
 Each impacted component is classified:
   direct         depends on the changed component itself (distance 1)
   execution_flow reached only through execution edges (CALLS / REQUESTS / HANDLES / TRIGGERS)
+  data_flow      reached through execution edges and at least one DATA edge: a value handed on
+                 (DATA_FLOW), a returned object (RETURNS) or shared `self.attr` state (READS_STATE)
   indirect       reached through at least one structural edge (IMPORTS, REFERENCES, STYLES, ...)
 and flagged `uncertain` when a hop is inferred/heuristic or the chain confidence is below 0.8.
-(Data-flow dependencies are not extracted, so they are not reported.)
+(Data flow is extracted for Python only: values passed between calls, returned objects and
+shared `self.attr` state; JavaScript data flow is not tracked.)
 
 Inputs: a single entity, or a unified diff (`analyze_diff`) which is mapped to the entities
 whose source lines were touched.
@@ -34,6 +37,8 @@ from repomind.models.impact import ImpactedComponent, ImpactHop, ImpactReport
 
 TEST_FILE = re.compile(r"(^|/)(tests?|__tests__|spec)/|(^|/)test_[^/]*\.py$|\.(test|spec)\.[jt]sx?$", re.I)
 FLOW_TYPES = {t.value for t in FLOW_EDGES} | {CONSTRUCTS}
+# Edges along which DATA (not control) travels: a value, a returned object or shared `self.attr` state.
+DATA_TYPES = {"DATA_FLOW", "READS_STATE", "RETURNS"}
 
 
 class ImpactError(ValueError):
@@ -197,6 +202,8 @@ class ImpactService:
             category = "direct"
         elif all(h.relation in FLOW_TYPES for h in chain):
             category = "execution_flow"
+        elif all(h.relation in FLOW_TYPES | DATA_TYPES for h in chain):
+            category = "data_flow"          # reached through execution edges AND at least one data edge
         else:
             category = "indirect"
         entity = self.graph.get_entity(node)
@@ -219,7 +226,9 @@ class ImpactService:
         phrases = {
             "CALLS": "calls", "REQUESTS": "sends a request to", "TRIGGERS": "triggers",
             "REFERENCES": "references", "IMPORTS": "imports", "INHERITS": "inherits from", "USES": "uses",
-            "HANDLES": "is served by", "STYLES": "is styled by",
+            "HANDLES": "is served by", "STYLES": "is styled by", CONSTRUCTS: "runs the constructor of",
+            "RETURNS": "returns an instance of", "DATA_FLOW": "is given data produced by",
+            "READS_STATE": "reads state written by",
         }
         parts = []
         for h in chain:

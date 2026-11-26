@@ -215,6 +215,36 @@
    "HANDLES",
    "api:GET:/api/orders/<int:order_id>",
    "detected"
+  ],
+  [
+   "python:services/pricing.py:total",
+   "DATA_FLOW",
+   "python:models/order.py:Order",
+   "inferred"
+  ],
+  [
+   "python:repositories/order_repository.py:OrderRepository.save",
+   "DATA_FLOW",
+   "python:models/order.py:Order",
+   "inferred"
+  ],
+  [
+   "python:services/order_service.py:OrderService.place",
+   "READS_STATE",
+   "python:services/order_service.py:OrderService.__init__",
+   "inferred"
+  ],
+  [
+   "python:services/order_service.py:OrderService.find",
+   "READS_STATE",
+   "python:services/order_service.py:OrderService.__init__",
+   "inferred"
+  ],
+  [
+   "python:repositories/order_repository.py:OrderRepository.get",
+   "READS_STATE",
+   "python:repositories/order_repository.py:OrderRepository.__init__",
+   "inferred"
   ]
  ],
  "forbidden_relationships": [

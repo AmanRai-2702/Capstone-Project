@@ -8,7 +8,7 @@ LOGIN_APP = str(Path(__file__).resolve().parents[2] / "test_apps" / "login_app")
 
 def test_analyze_json(capsys):
     assert main(["analyze", LOGIN_APP, "--json"]) == 0
-    assert json.loads(capsys.readouterr().out)["entity_count"] == 39
+    assert json.loads(capsys.readouterr().out)["entity_count"] == 40
 
 
 def test_legacy_bare_path_still_ingests(capsys):
@@ -41,15 +41,15 @@ def test_bad_path_returns_error(capsys):
 def test_graph_export_json_and_graphml(tmp_path, capsys):
     out = tmp_path / "g.graphml"
     assert main(["graph", LOGIN_APP, "--format", "graphml", "-o", str(out)]) == 0
-    assert out.read_text(encoding="utf-8").count("<node ") == 39
+    assert out.read_text(encoding="utf-8").count("<node ") == 40
     assert main(["graph", LOGIN_APP, "-o", str(tmp_path / "g.json")]) == 0
-    assert len(json.loads((tmp_path / "g.json").read_text(encoding="utf-8"))["nodes"]) == 39
+    assert len(json.loads((tmp_path / "g.json").read_text(encoding="utf-8"))["nodes"]) == 40
     assert main(["graph", LOGIN_APP, "--format", "graphml"]) == 1          # graphml needs --output
 
 
 def test_exclude_flag(capsys):
     assert main(["analyze", LOGIN_APP, "--json", "--exclude", "static"]) == 0
-    assert json.loads(capsys.readouterr().out)["entity_count"] < 39
+    assert json.loads(capsys.readouterr().out)["entity_count"] < 40
 
 
 def test_impact_from_diff_file(tmp_path, capsys):

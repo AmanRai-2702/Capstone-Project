@@ -21,12 +21,12 @@ def client(tmp_path_factory):
 
 
 R = "/api/repositories/login_app"
-EXPECTED_RELS = 60   # keep in sync with ground_truth.json (59 + USES edge)
+EXPECTED_RELS = 63   # keep in sync with login_app/ground_truth.json (phase 6: +2 READS_STATE, anonymous handler entity)
 
 
 def test_summary(client):
     d = client.get(R).json()
-    assert d["name"] == "login_app" and d["entity_count"] == 39 and d["relationship_count"] == EXPECTED_RELS
+    assert d["name"] == "login_app" and d["entity_count"] == 40 and d["relationship_count"] == EXPECTED_RELS
     assert client.get("/api/repositories").json()[0]["repo_id"] == "login_app"
 
 
@@ -41,8 +41,8 @@ def test_bad_location_400(client):
 
 def test_graph_and_entities(client):
     g = client.get(f"{R}/graph").json()
-    assert len(g["nodes"]) == 39 and len(g["edges"]) == EXPECTED_RELS
-    assert len(client.get(f"{R}/graph", params={"include_files": False}).json()["nodes"]) == 31
+    assert len(g["nodes"]) == 40 and len(g["edges"]) == EXPECTED_RELS
+    assert len(client.get(f"{R}/graph", params={"include_files": False}).json()["nodes"]) == 32
     found = client.get(f"{R}/entities", params={"q": "handleLogin"}).json()
     assert found[0]["id"] == "javascript:static/login.js:handleLogin"
 

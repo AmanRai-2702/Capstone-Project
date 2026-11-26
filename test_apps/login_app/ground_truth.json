@@ -156,6 +156,10 @@
   [
    "file:services/auth_service.py",
    "file"
+  ],
+  [
+   "javascript:static/login.js:handler@35",
+   "function"
   ]
  ],
  "relationships": [
@@ -212,12 +216,6 @@
    "TRIGGERS",
    "javascript:static/login.js:handleLogin",
    "detected"
-  ],
-  [
-   "html:static/index.html:#profile-btn",
-   "TRIGGERS",
-   "javascript:static/login.js:loadProfile",
-   "inferred"
   ],
   [
    "file:static/login.js",
@@ -413,12 +411,6 @@
   ],
   [
    "file:static/login.js",
-   "CALLS",
-   "javascript:static/login.js:loadProfile",
-   "detected"
-  ],
-  [
-   "file:static/login.js",
    "CONTAINS",
    "javascript:static/login.js:handleLogin",
    "detected"
@@ -518,6 +510,36 @@
    "USES",
    "python:app.py:LoginRequest",
    "detected"
+  ],
+  [
+   "python:services/auth_service.py:AuthService.authenticate",
+   "READS_STATE",
+   "python:services/auth_service.py:AuthService.__init__",
+   "inferred"
+  ],
+  [
+   "python:services/auth_service.py:AuthService.get_user",
+   "READS_STATE",
+   "python:services/auth_service.py:AuthService.__init__",
+   "inferred"
+  ],
+  [
+   "html:static/index.html:#profile-btn",
+   "TRIGGERS",
+   "javascript:static/login.js:handler@35",
+   "detected"
+  ],
+  [
+   "javascript:static/login.js:handler@35",
+   "CALLS",
+   "javascript:static/login.js:loadProfile",
+   "detected"
+  ],
+  [
+   "file:static/login.js",
+   "CONTAINS",
+   "javascript:static/login.js:handler@35",
+   "detected"
   ]
  ],
  "forbidden_relationships": [
@@ -534,5 +556,5 @@
    "inferred"
   ]
  ],
- "notes": "Entities/relationships were written by reading the source. forbidden_relationships are known false positives that must never reappear."
+ "notes": "Entities/relationships were written by reading the source. forbidden_relationships are known false positives that must never reappear. READS_STATE (added in phase 6): a method that reads self.users depends on __init__, which sets it. Phase 6: the anonymous click handler on #profile-btn is an entity (handler@35): the element TRIGGERS it and it CALLS loadProfile (the old model attributed the call to the file)."
 }
