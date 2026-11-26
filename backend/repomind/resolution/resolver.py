@@ -13,6 +13,9 @@ Rules, in order:
                       `${x}`) and matched on (method, path). A unique path match under a
                       different method is reported as a method mismatch.
   3. Packages       - `a/b.py` falls back to `a/b/__init__.py`.
+  3b. Inheritance   - `Child.method` that does not exist resolves to the nearest base class that
+                      defines `method` (following INHERITS edges across files), as an inferred link:
+                      a subclass elsewhere could override it.
   4. Leftovers      - classified as external package or unresolved target.
 """
 from __future__ import annotations
@@ -63,6 +66,7 @@ class RelationshipResolver:
     # ------------------------------------------------------------------ public
     def resolve(self, relationships: list[Relationship]) -> tuple[list[Relationship], list[UnresolvedReference]]:
         includers = self._script_includers(relationships)
+        self._bases = self._base_classes(relationships)
         out: dict[str, Relationship] = {}
         unresolved: list[UnresolvedReference] = []
 
@@ -228,13 +232,49 @@ class RelationshipResolver:
                         return hits[0].id, True
         return None, False
 
+    def _base_classes(self, relationships: list[Relationship]) -> dict[str, list[str]]:
+        """class entity id -> ids of its (resolved) base classes, from INHERITS edges."""
+        bases: dict[str, list[str]] = defaultdict(list)
+        for r in relationships:
+            if r.type != RelationType.INHERITS:
+                continue
+            src, _ = self._fix_python_id(r.source_id)
+            tgt, _ = self._fix_python_id(r.target_id)
+            if src and tgt and tgt not in bases[src]:
+                bases[src].append(tgt)
+        return bases
+
+    def _inherited_member(self, eid: str) -> str | None:
+        """`python:a.py:Child.method` -> `python:b.py:Base.method` if Child (transitively) inherits it."""
+        m = re.match(r"^python:(?P<mod>[^:]+?)\.py:(?P<cls>.+)\.(?P<member>[^.]+)$", eid)
+        if not m:
+            return None
+        cls_id, _ = self._fix_python_id(f"python:{m['mod']}.py:{m['cls']}")
+        queue, seen = list(self._bases.get(cls_id or "", [])), set()
+        while queue:
+            base = queue.pop(0)
+            if base in seen:
+                continue
+            seen.add(base)
+            if f"{base}.{m['member']}" in self.entities:
+                return f"{base}.{m['member']}"
+            queue.extend(self._bases.get(base, []))
+        return None
+
     def _package_fallback(self, rel: Relationship) -> list[Relationship] | None:
         s, s_re = self._fix_python_id(rel.source_id)
         t, t_re = self._fix_python_id(rel.target_id)
+        inherited = False
+        if s and not t:
+            t = self._inherited_member(rel.target_id)
+            inherited = t is not None
         if not (s and t):
             return None
         update: dict = {"source_id": s, "target_id": t}
         if s_re or t_re:                        # followed a re-export by name: a little less certain
+            update["kind"] = RelationKind.INFERRED if rel.kind == RelationKind.DETECTED else rel.kind
+            update["confidence"] = min(rel.confidence, 0.85)
+        if inherited:                           # a subclass of the receiver's class could override it
             update["kind"] = RelationKind.INFERRED if rel.kind == RelationKind.DETECTED else rel.kind
             update["confidence"] = min(rel.confidence, 0.85)
         return [rel.model_copy(update=update)]

@@ -1,0 +1,43 @@
+.menu li {
+  margin: 0;
+}
+
+.menu > ul {
+  padding: 0;
+}
+
+.menu > li {
+  color: red;
+}
+
+input[type="text"] {
+  border: 1px solid;
+}
+
+a:hover {
+  color: red;
+}
+
+li:first-child {
+  font-weight: bold;
+}
+
+.item.active {
+  color: blue;
+}
+
+.card .title {
+  font-size: 2rem;
+}
+
+.card > .title {
+  margin: 0;
+}
+
+.card > form > .btn {
+  padding: 4px;
+}
+
+.card .menu {
+  display: none;
+}

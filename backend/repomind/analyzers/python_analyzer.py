@@ -43,6 +43,8 @@ class PythonASTVisitor(ast.NodeVisitor):
         self.imported_symbols: dict[str, str] = {}
         # e.g. "auth_service": "AuthService", "self.users": "UserRepository"
         self.var_types: dict[str, str] = {}
+        # `import services.pricing as pr` -> {"pr": "services/pricing.py"}; `import a.b` -> {"a.b": "a/b.py"}
+        self.module_aliases: dict[str, str] = {}
 
         # Pre-pass index of what this module defines, so calls to things defined *later*
         # in the file (or later in a class) still resolve.
@@ -102,6 +104,7 @@ class PythonASTVisitor(ast.NodeVisitor):
         file_id = make_file_id(self.rel_path)
         for alias in node.names:
             mod_path = alias.name.replace(".", "/") + ".py"
+            self.module_aliases[alias.asname or alias.name] = mod_path
             target_file_id = make_file_id(mod_path)
             self.result.add_relationship(
                 Relationship(
@@ -170,6 +173,15 @@ class PythonASTVisitor(ast.NodeVisitor):
         return None
 
     @staticmethod
+    def _dotted(expr: ast.expr) -> str | None:
+        """a.b.c -> "a.b.c" for a pure attribute chain on a name, else None."""
+        parts: list[str] = []
+        while isinstance(expr, ast.Attribute):
+            parts.append(expr.attr)
+            expr = expr.value
+        return ".".join([expr.id, *reversed(parts)]) if isinstance(expr, ast.Name) else None
+
+    @staticmethod
     def _target_key(target: ast.expr) -> str | None:
         if isinstance(target, ast.Name):
             return target.id
@@ -177,16 +189,27 @@ class PythonASTVisitor(ast.NodeVisitor):
             return f"{target.value.id}.{target.attr}"          # e.g. "self.users"
         return None
 
-    def visit_Assign(self, node: ast.Assign) -> None:
-        """Track what a variable holds, from three sources:
-        x = Foo()            constructor call
-        self.g = graph       copy of a variable whose type is already known (e.g. an annotated parameter)
+    def _value_class(self, value: ast.expr) -> str | None:
+        """Class an assigned expression evaluates to, when that is statically clear:
+        Foo()                      constructor call
+        other / self.other         copy of something whose type is already known (annotated parameter, alias)
+        a or Foo()  /  Foo() if c else b     the first operand that has a known class
         """
-        cls_name = None
-        if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
-            cls_name = node.value.func.id
-        elif isinstance(node.value, ast.Name):
-            cls_name = self.var_types.get(node.value.id)
+        if isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
+            return value.func.id if value.func.id in self.local_classes or value.func.id in self.imported_symbols else None
+        if isinstance(value, (ast.Name, ast.Attribute)):
+            key = self._target_key(value)
+            return self.var_types.get(key) if key else None
+        if isinstance(value, ast.BoolOp):
+            return next((c for v in value.values if (c := self._value_class(v))), None)
+        if isinstance(value, ast.IfExp):
+            return self._value_class(value.body) or self._value_class(value.orelse)
+        return None
+
+    def visit_Assign(self, node: ast.Assign) -> None:
+        """Track what a variable holds (see _value_class), so `x = Foo(); x.run()` and
+        `repo = self.repo; repo.get()` resolve to Foo.run / the repository's get."""
+        cls_name = self._value_class(node.value)
         if cls_name:
             for target in node.targets:
                 key = self._target_key(target)
@@ -374,57 +397,60 @@ class PythonASTVisitor(ast.NodeVisitor):
             if not isinstance(dec, ast.Call):
                 continue
 
-            method = None
+            methods: list[str] = []
             route = None
 
             # Pattern: @app.get("/path"), @router.post("/path")
             if isinstance(dec.func, ast.Attribute):
                 attr_name = dec.func.attr.lower()
                 if attr_name in HTTP_METHODS:
-                    method = attr_name.upper()
-                elif attr_name == "route":
-                    method = "GET"  # default Flask/FastAPI route method
+                    methods = [attr_name.upper()]
+                elif attr_name in ("route", "api_route"):
+                    methods = ["GET"]  # default Flask/FastAPI route method
                     for kw in dec.keywords:
-                        if kw.arg == "methods" and isinstance(kw.value, (ast.List, ast.Tuple)):
-                            if kw.value.elts and isinstance(kw.value.elts[0], ast.Constant):
-                                method = str(kw.value.elts[0].value).upper()
+                        if kw.arg == "methods" and isinstance(kw.value, (ast.List, ast.Tuple, ast.Set)):
+                            # methods=["GET", "POST"]: the function handles every listed method
+                            listed = [str(e.value).upper() for e in kw.value.elts
+                                      if isinstance(e, ast.Constant) and isinstance(e.value, str)]
+                            methods = listed or methods
 
             # First arg is typically the URL route path string
-            if method and dec.args and isinstance(dec.args[0], ast.Constant):
+            if methods and dec.args and isinstance(dec.args[0], ast.Constant):
                 val = dec.args[0].value
                 if isinstance(val, str):
                     route = val
 
-            if method and route:
-                endpoint_id = make_endpoint_id(method, route)
-                endpoint_loc = SourceLocation(
-                    file_path=self.rel_path,
-                    start_line=dec.lineno,
-                    end_line=dec.end_lineno or dec.lineno,
-                )
-                endpoint_entity = Entity(
-                    id=endpoint_id,
-                    type=EntityType.API_ENDPOINT,
-                    name=f"{method} {route}",
-                    qualified_name=f"{method} {route}",
-                    language=Language.UNKNOWN,
-                    location=endpoint_loc,
-                    metadata={"method": method, "route": route, "framework": "fastapi"},
-                )
-                self.result.add_entity(endpoint_entity)
-
-                # Python Function HANDLES API Endpoint
-                snippet = self._get_snippet(dec.lineno, dec.end_lineno or dec.lineno)
-                self.result.add_relationship(
-                    Relationship(
-                        source_id=func_entity.id,
-                        target_id=endpoint_id,
-                        type=RelationType.HANDLES,
-                        kind=RelationKind.DETECTED,
-                        confidence=1.0,
-                        evidence=[Evidence(snippet=snippet, location=endpoint_loc)],
+            if route:
+                for method in methods:
+                    endpoint_id = make_endpoint_id(method, route)
+                    endpoint_loc = SourceLocation(
+                        file_path=self.rel_path,
+                        start_line=dec.lineno,
+                        end_line=dec.end_lineno or dec.lineno,
                     )
-                )
+                    endpoint_entity = Entity(
+                        id=endpoint_id,
+                        type=EntityType.API_ENDPOINT,
+                        name=f"{method} {route}",
+                        qualified_name=f"{method} {route}",
+                        language=Language.UNKNOWN,
+                        location=endpoint_loc,
+                        metadata={"method": method, "route": route, "framework": "fastapi"},
+                    )
+                    self.result.add_entity(endpoint_entity)
+
+                    # Python Function HANDLES API Endpoint
+                    snippet = self._get_snippet(dec.lineno, dec.end_lineno or dec.lineno)
+                    self.result.add_relationship(
+                        Relationship(
+                            source_id=func_entity.id,
+                            target_id=endpoint_id,
+                            type=RelationType.HANDLES,
+                            kind=RelationKind.DETECTED,
+                            confidence=1.0,
+                            evidence=[Evidence(snippet=snippet, location=endpoint_loc)],
+                        )
+                    )
 
     def visit_Call(self, node: ast.Call) -> None:
         """Inspect calls inside functions/methods and attempt resolution."""
@@ -457,6 +483,19 @@ class PythonASTVisitor(ast.NodeVisitor):
                         type=RelationType.CALLS,
                         kind=owner_kind,
                         confidence=owner_conf,
+                        evidence=[Evidence(snippet=snippet, location=call_loc)],
+                    )
+                )
+            elif (mod := self.module_aliases.get(self._dotted(node.func.value) or "")) and                     (node.func.value.id if isinstance(node.func.value, ast.Name) else self._dotted(node.func.value)) not in self.var_types:
+                # pricing.total(...) where `import services.pricing as pricing`: a function in that module.
+                # (The resolver reports it as an external package if the module is not part of the repository.)
+                self.result.add_relationship(
+                    Relationship(
+                        source_id=self.current_callable_id,
+                        target_id=make_entity_id("python", mod, method_name),
+                        type=RelationType.CALLS,
+                        kind=RelationKind.DETECTED,
+                        confidence=1.0,
                         evidence=[Evidence(snippet=snippet, location=call_loc)],
                     )
                 )

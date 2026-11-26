@@ -53,6 +53,17 @@ def evaluate_app(app_dir: Path) -> dict:
     exp_rel = {tuple(r) for r in gt["relationships"]}
     act_rel = {(r.source_id, r.type.value, r.target_id, r.kind.value) for r in analysis.relationships}
     forbidden = {tuple(r) for r in gt.get("forbidden_relationships", [])}
+    kind_notes = []
+    probe = bool(gt.get("probe"))
+    if probe:
+        # Probe apps check specific facts: matching ignores the detected/inferred label (a convention),
+        # which is reported separately; extra relationships are not errors (only forbidden ones are).
+        actual_kind = {r[:3]: r[3] for r in act_rel}
+        kind_notes = sorted((r[:3], r[3], actual_kind[r[:3]]) for r in exp_rel
+                            if r[:3] in actual_kind and actual_kind[r[:3]] != r[3])
+        exp_rel = {r[:3] for r in exp_rel}
+        act_rel = {r[:3] for r in act_rel}
+        forbidden = {r[:3] for r in forbidden}
 
     ent = calculate_scores(exp_ent, act_ent)
     rel = calculate_scores(exp_rel, act_rel)
@@ -61,12 +72,12 @@ def evaluate_app(app_dir: Path) -> dict:
     forbidden_hit = sorted(forbidden & act_rel)
     by_type = {t: calculate_scores({x for x in exp_rel if x[1] == t}, {x for x in act_rel if x[1] == t})
                for t in sorted({x[1] for x in exp_rel | act_rel})}
-    by_kind = {k: calculate_scores({x for x in exp_rel if x[3] == k}, {x for x in act_rel if x[3] == k})
-               for k in ("detected", "inferred", "heuristic")}
+    by_kind = {k: calculate_scores({x for x in exp_rel if x[-1] == k}, {x for x in act_rel if x[-1] == k})
+               for k in ("detected", "inferred", "heuristic")} if not probe else {}
     ok = not ent["missing"] and not rel["missing"] and not dangling and not forbidden_hit
     return {
         "app": app_dir.name, "analysis": analysis, "entities": ent, "relationships": rel,
-        "by_type": by_type, "by_kind": by_kind, "dangling": dangling, "forbidden_hit": forbidden_hit, "ok": ok,
+        "by_type": by_type, "by_kind": by_kind, "probe": probe, "kind_notes": kind_notes, "dangling": dangling, "forbidden_hit": forbidden_hit, "ok": ok,
     }
 
 
@@ -79,9 +90,13 @@ def print_app(res: dict) -> None:
               f"P={_pct(r['precision'])} R={_pct(r['recall'])} F1={_pct(r['f1'])}")
     print("  by type:  " + "  ".join(f"{t} {r['correct']}/{r['expected']}" for t, r in res["by_type"].items() if r["expected"]))
     print("  by kind:  " + "  ".join(f"{k} {r['correct']}/{r['expected']}" for k, r in res["by_kind"].items() if r["expected"]))
+    if res["probe"]:
+        print("  (probe app: only MISSING and FORBIDDEN items fail; extras and precision are informational)")
     for label, items in (
-        ("MISSING entities", res["entities"]["missing"]), ("EXTRA entities", res["entities"]["extra"]),
-        ("MISSING relationships", res["relationships"]["missing"]), ("EXTRA relationships", res["relationships"]["extra"]),
+        ("MISSING entities", res["entities"]["missing"]), ("EXTRA entities", [] if res["probe"] else res["entities"]["extra"]),
+        ("MISSING relationships", res["relationships"]["missing"]),
+        ("EXTRA relationships", [] if res["probe"] else res["relationships"]["extra"]),
+        ("KIND differs from expectation (informational)", [f"{a} expected {b}, got {c}" for a, b, c in res["kind_notes"]]),
         ("DANGLING edges", res["dangling"]), ("FORBIDDEN edges present", res["forbidden_hit"]),
     ):
         if items:

@@ -1,0 +1,201 @@
+{
+ "app": "style_app",
+ "probe": true,
+ "entities": [
+  [
+   "css:style.css:.menu li",
+   "css_selector"
+  ],
+  [
+   "css:style.css:.menu > ul",
+   "css_selector"
+  ],
+  [
+   "css:style.css:.menu > li",
+   "css_selector"
+  ],
+  [
+   "css:style.css:input[type=\"text\"]",
+   "css_selector"
+  ],
+  [
+   "css:style.css:a:hover",
+   "css_selector"
+  ],
+  [
+   "css:style.css:li:first-child",
+   "css_selector"
+  ],
+  [
+   "css:style.css:.item.active",
+   "css_selector"
+  ],
+  [
+   "css:style.css:.card .title",
+   "css_selector"
+  ],
+  [
+   "css:style.css:.card > .title",
+   "css_selector"
+  ],
+  [
+   "css:style.css:.card > form > .btn",
+   "css_selector"
+  ],
+  [
+   "css:style.css:.card .menu",
+   "css_selector"
+  ],
+  [
+   "html:index.html:#menu",
+   "html_element"
+  ],
+  [
+   "html:index.html:#menu-list",
+   "html_element"
+  ],
+  [
+   "html:index.html:#home-item",
+   "html_element"
+  ],
+  [
+   "html:index.html:#about-item",
+   "html_element"
+  ],
+  [
+   "html:index.html:#home-link",
+   "html_element"
+  ],
+  [
+   "html:index.html:#about-link",
+   "html_element"
+  ],
+  [
+   "html:index.html:#card",
+   "html_element"
+  ],
+  [
+   "html:index.html:#title",
+   "html_element"
+  ],
+  [
+   "html:index.html:#name",
+   "html_element"
+  ],
+  [
+   "html:index.html:#pw",
+   "html_element"
+  ],
+  [
+   "html:index.html:#go-btn",
+   "html_element"
+  ]
+ ],
+ "relationships": [
+  [
+   "css:style.css:.menu li",
+   "STYLES",
+   "html:index.html:#home-item",
+   "detected"
+  ],
+  [
+   "css:style.css:.menu li",
+   "STYLES",
+   "html:index.html:#about-item",
+   "detected"
+  ],
+  [
+   "css:style.css:.menu > ul",
+   "STYLES",
+   "html:index.html:#menu-list",
+   "detected"
+  ],
+  [
+   "css:style.css:input[type=\"text\"]",
+   "STYLES",
+   "html:index.html:#name",
+   "detected"
+  ],
+  [
+   "css:style.css:a:hover",
+   "STYLES",
+   "html:index.html:#home-link",
+   "inferred"
+  ],
+  [
+   "css:style.css:a:hover",
+   "STYLES",
+   "html:index.html:#about-link",
+   "inferred"
+  ],
+  [
+   "css:style.css:li:first-child",
+   "STYLES",
+   "html:index.html:#home-item",
+   "detected"
+  ],
+  [
+   "css:style.css:.item.active",
+   "STYLES",
+   "html:index.html:#home-item",
+   "detected"
+  ],
+  [
+   "css:style.css:.card .title",
+   "STYLES",
+   "html:index.html:#title",
+   "detected"
+  ],
+  [
+   "css:style.css:.card > .title",
+   "STYLES",
+   "html:index.html:#title",
+   "detected"
+  ],
+  [
+   "css:style.css:.card > form > .btn",
+   "STYLES",
+   "html:index.html:#go-btn",
+   "detected"
+  ],
+  [
+   "file:index.html",
+   "REFERENCES",
+   "file:style.css",
+   "detected"
+  ]
+ ],
+ "forbidden_relationships": [
+  [
+   "css:style.css:.menu > li",
+   "STYLES",
+   "html:index.html:#home-item",
+   "detected"
+  ],
+  [
+   "css:style.css:.menu > li",
+   "STYLES",
+   "html:index.html:#about-item",
+   "detected"
+  ],
+  [
+   "css:style.css:input[type=\"text\"]",
+   "STYLES",
+   "html:index.html:#pw",
+   "detected"
+  ],
+  [
+   "css:style.css:li:first-child",
+   "STYLES",
+   "html:index.html:#about-item",
+   "detected"
+  ],
+  [
+   "css:style.css:.card .menu",
+   "STYLES",
+   "html:index.html:#menu",
+   "detected"
+  ]
+ ],
+ "notes": "Probe app, written from the source before analysis. Targets: descendant and child combinators, attribute selectors, state and structural pseudo-classes, and combinators that must NOT match."
+}

@@ -86,8 +86,12 @@ class AnalysisService:
 
         # Phase 3: Parse JavaScript files
         dynamic_classes: dict[str, set[str]] = {}
+        # Pre-pass: which functions are DOM-lookup helpers (`const $ = s => document.querySelector(s)`),
+        # so files that import them are analysed correctly whatever the file order.
+        js_sources = {jf.path: self._read_file(root / jf.path) for jf in js_files}
+        self.javascript_analyzer.prepare(js_sources)
         for jf in js_files:
-            content = self._read_file(root / jf.path)
+            content = js_sources[jf.path]
             res = self._safe(self.javascript_analyzer.analyze_file, jf.path, content, errors=errors)
             for el_id, classes in res.dynamic_classes.items():
                 dynamic_classes.setdefault(el_id, set()).update(classes)
