@@ -38,6 +38,7 @@ from repomind.ingestion.errors import IngestionError
 from repomind.models import RepositoryAnalysis
 from repomind.qa import QAService, get_provider
 from repomind.services.analysis_service import AnalysisService
+from repomind.services.contract_service import ContractService
 from repomind.services.impact_service import ImpactError, ImpactService
 from repomind.storage import AnalysisStore
 
@@ -71,10 +72,18 @@ class TraceRequest(BaseModel):
     view: str = Field(default="execution", description="syntactic | execution | dependency | impact")
 
 
+class ContractChangeRequest(BaseModel):
+    endpoint: str = Field(min_length=1, max_length=512, description="endpoint id or name, e.g. 'POST /api/login'")
+    response_keys: list[str] = Field(default_factory=list, max_length=100, description="response keys renamed/removed")
+    request_fields: list[str] = Field(default_factory=list, max_length=100, description="request fields changed")
+
+
 class ImpactRequest(BaseModel):
     target: str | None = Field(default=None, max_length=512, description="entity id / name")
     diff: str | None = Field(default=None, max_length=2_000_000, description="unified diff text")
     max_depth: int = Field(default=10, ge=1, le=50)
+    strict_references: bool = Field(default=False, description="do not let behavioural impact flow through REFERENCES "
+                                    "into the referrers of an HTML element (fewer, more precise 'indirect' results)")
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -92,7 +101,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     def build_session(analysis: RepositoryAnalysis) -> RepoSession:
         graph = RepositoryGraph.from_analysis(analysis)
-        return RepoSession(analysis, graph, ImpactService(graph), QAService(analysis, graph, provider, settings))
+        return RepoSession(analysis, graph, ImpactService(graph, analysis.unresolved),
+                           QAService(analysis, graph, provider, settings))
 
     def session(repo_id: str) -> RepoSession:
         with lock:
@@ -108,6 +118,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         with lock:
             sessions[repo_id] = built
         return built
+
+    def impact_service(s: RepoSession, strict: bool) -> ImpactService:
+        return ImpactService(s.graph, s.analysis.unresolved, strict_references=True) if strict else s.impact
 
     def known_ids() -> list[str]:
         with lock:
@@ -369,11 +382,31 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def trace_post(repo_id: str, req: TraceRequest) -> dict:
         return do_trace(repo_id, req.source, req.target, req.max_depth, req.view)
 
+    # ------------------------------------------------------------------ API contracts
+    @api.get("/api/repositories/{repo_id}/contracts")
+    def get_contracts(repo_id: str, only_issues: bool = False) -> dict:
+        """Per endpoint: what the handler returns/accepts, what each client sends/reads, and disagreements."""
+        found = ContractService(session(repo_id).graph).contracts()
+        if only_issues:
+            found = [c for c in found if c["issues"]]
+        return {"endpoints": found, "issue_count": sum(len(c["issues"]) for c in found)}
+
+    @api.post("/api/repositories/{repo_id}/contracts/impact")
+    def contract_impact(repo_id: str, req: ContractChangeRequest) -> dict:
+        """Who is affected if these response keys or request fields of an endpoint change."""
+        s = session(repo_id)
+        matches = [e for e in s.graph.resolve(req.endpoint) if e.type.value == "api_endpoint"]
+        if not matches:
+            raise HTTPException(404, f"No API endpoint matches '{req.endpoint}'")
+        if len(matches) > 1:
+            raise HTTPException(409, "Ambiguous endpoint: " + ", ".join(e.id for e in matches[:8]))
+        return ContractService(s.graph).change_impact(matches[0].id, req.response_keys, req.request_fields)
+
     # ------------------------------------------------------------------ impact / Q&A / source
     @api.get("/api/repositories/{repo_id}/impact")
-    def impact_get(repo_id: str, target: str, max_depth: int = Query(10, ge=1, le=50)) -> dict:
+    def impact_get(repo_id: str, target: str, max_depth: int = Query(10, ge=1, le=50), strict: bool = False) -> dict:
         try:
-            return session(repo_id).impact.analyze_impact(target, max_depth=max_depth).model_dump(mode="json")
+            return impact_service(session(repo_id), strict).analyze_impact(target, max_depth=max_depth).model_dump(mode="json")
         except ImpactError as exc:
             raise HTTPException(404, str(exc)) from exc
 
@@ -382,9 +415,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if bool(req.target) == bool(req.diff):
             raise HTTPException(422, "Provide exactly one of 'target' or 'diff'.")
         s = session(repo_id)
+        svc = impact_service(s, req.strict_references)
         try:
-            report = (s.impact.analyze_impact(req.target, req.max_depth) if req.target
-                      else s.impact.analyze_diff(req.diff, req.max_depth))
+            report = (svc.analyze_impact(req.target, req.max_depth) if req.target
+                      else svc.analyze_diff(req.diff, req.max_depth))
         except ImpactError as exc:
             raise HTTPException(404, str(exc)) from exc
         return report.model_dump(mode="json")

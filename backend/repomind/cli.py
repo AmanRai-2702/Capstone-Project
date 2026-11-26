@@ -99,10 +99,17 @@ def print_impact(report) -> None:
     print(f"By language: {report.by_language}")
     print(f"By type    : {report.by_type}")
     print(f"By category: {report.by_category}")
-    if report.suggested_tests:
-        print("Suggested tests to re-run:")
-        for t in report.suggested_tests:
-            print(f"  - {t}")
+    for note in report.notes:
+        print(f"Note: {note}")
+    if report.risk_factors:
+        print("Why this risk level:")
+        for f in report.risk_factors:
+            where = f"  ({', '.join(f.evidence[:2])})" if f.evidence else ""
+            print(f"  - [{f.severity}] {f.detail}{where}")
+    if report.suggested_test_details:
+        print("Suggested tests to re-run (most relevant first):")
+        for t in report.suggested_test_details:
+            print(f"  - {t.file}  score {t.score}: {'; '.join(t.reasons[:3])}")
     if report.affected_entry_points:
         print("User-facing entry points affected:")
         for e in report.affected_entry_points:
@@ -151,6 +158,8 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--since", metavar="GIT_REF", help="impact of everything changed since this git ref")
     group.add_argument("--diff-file", metavar="PATH", help="impact of a unified diff stored in a file")
     p.add_argument("--max-depth", type=int, default=10)
+    p.add_argument("--strict-references", action="store_true",
+                   help="do not report referrers of an HTML element as impacted when only its behaviour changed")
     p.add_argument("--json", action="store_true")
     p.add_argument("--exclude", action="append", default=[], metavar="PATTERN")
 
@@ -225,7 +234,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "impact":
             from .services.impact_service import ImpactError, ImpactService
-            service = ImpactService(graph)
+            service = ImpactService(graph, analysis.unresolved, strict_references=args.strict_references)
             try:
                 if args.target:
                     report = service.analyze_impact(args.target, args.max_depth)

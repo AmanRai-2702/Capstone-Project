@@ -1,0 +1,211 @@
+{
+ "_about": "Ground truth for change-impact analysis. For each scenario `expected` is the COMPLETE set of components that depend (directly or transitively) on the changed one, worked out by hand from the source code with these rules: A depends on B when A calls B / is given data produced by B / reads state B writes / constructs B / returns an instance of B / requests endpoint B / is triggered-by-handler B; an endpoint depends on its handler; an element depends on the handler it triggers; a file depends on what it imports or references. Written before the tool was run on these scenarios. `categories` pins the expected category of selected components. `structural` lists dependents reached only through a REFERENCES edge into the referrer of an HTML element that was itself reached through its handler (e.g. login.js, which looks the element up, and the page that includes login.js). The default mode reports them as `indirect`; strict mode does not, because an element's behaviour changing does not affect the code that merely references it. Both modes are scored.",
+ "scenarios": [
+  {
+   "id": "login/repo-method",
+   "app": "login_app",
+   "target": "python:repositories/user_repository.py:UserRepository.find_by_id",
+   "expected": [
+    "python:services/auth_service.py:AuthService.get_user",
+    "python:app.py:get_user",
+    "api:GET:/api/users/{user_id}",
+    "javascript:static/login.js:loadProfile",
+    "javascript:static/login.js:handler@35",
+    "html:static/index.html:#profile-btn"
+   ],
+   "categories": {
+    "python:services/auth_service.py:AuthService.get_user": "direct",
+    "html:static/index.html:#profile-btn": "execution_flow",
+    "file:static/login.js": "indirect",
+    "file:static/index.html": "indirect"
+   },
+   "structural": [
+    "file:static/login.js",
+    "file:static/index.html"
+   ]
+  },
+  {
+   "id": "login/constructor-state",
+   "app": "login_app",
+   "target": "python:services/auth_service.py:AuthService.__init__",
+   "expected": [
+    "python:services/auth_service.py:AuthService",
+    "python:services/auth_service.py:AuthService.authenticate",
+    "python:services/auth_service.py:AuthService.get_user",
+    "python:app.py:login",
+    "api:POST:/api/login",
+    "javascript:static/login.js:handleLogin",
+    "html:static/index.html:#login-form",
+    "python:app.py:get_user",
+    "api:GET:/api/users/{user_id}",
+    "javascript:static/login.js:loadProfile",
+    "javascript:static/login.js:handler@35",
+    "html:static/index.html:#profile-btn"
+   ],
+   "categories": {
+    "python:services/auth_service.py:AuthService.authenticate": "direct",
+    "python:app.py:login": "data_flow",
+    "javascript:static/login.js:handleLogin": "data_flow",
+    "file:static/login.js": "indirect",
+    "file:static/index.html": "indirect"
+   },
+   "structural": [
+    "file:static/login.js",
+    "file:static/index.html"
+   ]
+  },
+  {
+   "id": "login/js-helper",
+   "app": "login_app",
+   "target": "javascript:static/login.js:showMessage",
+   "expected": [
+    "javascript:static/login.js:handleLogin",
+    "javascript:static/login.js:loadProfile",
+    "html:static/index.html:#login-form",
+    "javascript:static/login.js:handler@35",
+    "html:static/index.html:#profile-btn"
+   ],
+   "structural": [
+    "file:static/login.js",
+    "file:static/index.html"
+   ],
+   "categories": {
+    "file:static/login.js": "indirect",
+    "file:static/index.html": "indirect"
+   }
+  },
+  {
+   "id": "notes/repository-delete",
+   "app": "notes_app",
+   "target": "python:repositories/note_repository.py:NoteRepository.delete",
+   "expected": [
+    "python:services/note_service.py:NoteService.remove",
+    "python:repositories/note_repository.py:NoteRepository.insert",
+    "python:repositories/note_repository.py:NoteRepository.list_all",
+    "python:app.py:delete_note",
+    "api:DELETE:/api/notes/<int:note_id>",
+    "javascript:static/js/notes.js:removeNote",
+    "javascript:static/js/notes.js:render",
+    "javascript:static/js/notes.js:loadNotes",
+    "javascript:static/js/notes.js:addNote",
+    "html:static/index.html:#note-form",
+    "file:static/js/notes.js",
+    "python:services/note_service.py:NoteService.add",
+    "python:app.py:create_note",
+    "api:POST:/api/notes",
+    "python:services/note_service.py:NoteService.all_notes",
+    "python:app.py:list_notes",
+    "api:GET:/api/notes",
+    "javascript:static/js/archive.js:loadArchive",
+    "file:static/js/archive.js",
+    "file:static/index.html",
+    "file:static/archive.html"
+   ],
+   "categories": {
+    "file:static/archive.html": "indirect"
+   }
+  },
+  {
+   "id": "shop/class-with-data-flow",
+   "app": "shop_app",
+   "target": "python:models/order.py:Order",
+   "expected": [
+    "python:services/order_service.py:OrderService.place",
+    "python:services/pricing.py:total",
+    "python:repositories/order_repository.py:OrderRepository.save",
+    "python:app.py:orders",
+    "api:GET:/api/orders",
+    "api:POST:/api/orders"
+   ],
+   "categories": {
+    "python:services/pricing.py:total": "direct",
+    "python:app.py:orders": "execution_flow"
+   }
+  },
+  {
+   "id": "shop/inherited-method",
+   "app": "shop_app",
+   "target": "python:models/base.py:Model.validate",
+   "expected": [
+    "python:models/order.py:Order.describe",
+    "python:services/order_service.py:OrderService.place",
+    "python:app.py:orders",
+    "api:GET:/api/orders",
+    "api:POST:/api/orders"
+   ]
+  },
+  {
+   "id": "flow/method-through-return-types",
+   "app": "flow_app",
+   "target": "python:models.py:Store.put",
+   "expected": [
+    "python:app.py:put",
+    "python:pipeline.py:seed",
+    "api:POST:/put/{rid}"
+   ]
+  },
+  {
+   "id": "flow/data-pipeline",
+   "app": "flow_app",
+   "target": "python:pipeline.py:load",
+   "expected": [
+    "python:pipeline.py:run",
+    "python:pipeline.py:run_nested",
+    "python:pipeline.py:clean",
+    "python:pipeline.py:save"
+   ],
+   "categories": {
+    "python:pipeline.py:clean": "direct",
+    "python:pipeline.py:run": "direct",
+    "python:pipeline.py:save": "data_flow"
+   }
+  },
+  {
+   "id": "flow/returned-class",
+   "app": "flow_app",
+   "target": "python:models.py:Session",
+   "expected": [
+    "python:app.py:session",
+    "python:app.py:create_app",
+    "python:app.py:put",
+    "python:app.py:get",
+    "api:POST:/put/{rid}",
+    "api:GET:/get/{rid}"
+   ]
+  },
+  {
+   "id": "dash/backend-handler",
+   "app": "dash_app",
+   "target": "python:app.py:stats",
+   "expected": [
+    "api:GET:/api/stats",
+    "javascript:static/js/api.js:loadStats",
+    "javascript:static/js/main.js:handler@8",
+    "html:static/index.html:#refresh"
+   ],
+   "structural": [
+    "file:static/js/main.js",
+    "file:static/index.html"
+   ],
+   "categories": {
+    "file:static/js/main.js": "indirect",
+    "file:static/index.html": "indirect"
+   }
+  },
+  {
+   "id": "dash/dom-helper",
+   "app": "dash_app",
+   "target": "javascript:static/js/dom.js:$",
+   "expected": [
+    "javascript:static/js/main.js:showStats",
+    "javascript:static/js/charts.js:drawChart",
+    "file:static/js/main.js",
+    "javascript:static/js/main.js:handler@8",
+    "javascript:static/js/main.js:handler@21",
+    "html:static/index.html:#refresh",
+    "html:static/index.html:#stats",
+    "file:static/index.html"
+   ]
+  }
+ ]
+}

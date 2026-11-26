@@ -65,6 +65,8 @@ class PythonASTVisitor(ast.NodeVisitor):
         self.local_classes: set[str] = set()
         self.class_methods: dict[str, set[str]] = {}
         self.class_bases: dict[str, list[str]] = {}
+        # class name -> [(field, required)] for classes with annotated fields (pydantic / dataclass style models)
+        self.class_fields: dict[str, list[tuple[str, bool]]] = {}
         if tree is not None:
             # Functions defined inside other functions (factories like `def create_app(): def session(): ...`) are
             # callable from their siblings, so they count too. Methods (directly in a class body) do not.
@@ -74,6 +76,8 @@ class PythonASTVisitor(ast.NodeVisitor):
                                      if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and id(n) not in methods}
             for node in getattr(tree, "body", []):
                 if isinstance(node, ast.ClassDef):
+                    self.class_fields[node.name] = [(s.target.id, s.value is None) for s in node.body
+                                                    if isinstance(s, ast.AnnAssign) and isinstance(s.target, ast.Name)]
                     self.local_classes.add(node.name)
                     self.class_bases[node.name] = [b.id for b in node.bases if isinstance(b, ast.Name)]
                     self.class_methods[node.name] = {
@@ -602,7 +606,8 @@ class PythonASTVisitor(ast.NodeVisitor):
                         qualified_name=f"{method} {route}",
                         language=Language.UNKNOWN,
                         location=endpoint_loc,
-                        metadata={"method": method, "route": route, "framework": "fastapi"},
+                        metadata={"method": method, "route": route, "framework": "fastapi",
+                              **self._endpoint_contract(node, dec)},
                     )
                     self.result.add_entity(endpoint_entity)
 
@@ -618,6 +623,93 @@ class PythonASTVisitor(ast.NodeVisitor):
                             evidence=[Evidence(snippet=snippet, location=endpoint_loc)],
                         )
                     )
+
+    # ------------------------------------------------------------------ API contract of a route handler
+    _RESPONSE_CALLS = {"jsonify", "JSONResponse", "dict"}
+
+    def _endpoint_contract(self, fn: ast.FunctionDef | ast.AsyncFunctionDef, dec: ast.Call) -> dict:
+        """What the handler returns and accepts, from the code alone:
+          response_keys     keys of dict literals it returns (`return {"k": ..}`, `jsonify({..})`, `jsonify(k=..)`),
+                            the fields of `response_model=Model`, and `detail` if it raises HTTPException
+          response_complete False if some return could not be read (a variable, another call...)
+          request_fields    {field: required} from a model-typed parameter (`body: LoginRequest`) or from
+                            `data = request.get_json()` followed by `data["k"]` (required) / `data.get("k")`
+        Static facts only; a handler that builds its response dynamically is reported as incomplete."""
+        keys: set[str] = set()
+        complete, any_return = True, False
+        model = next((k.value.id for k in dec.keywords if k.arg == "response_model" and isinstance(k.value, ast.Name)), None)
+        stack = list(fn.body)
+        returns, raises = [], []
+        while stack:                                          # this function only, not nested ones
+            n = stack.pop()
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+                continue
+            if isinstance(n, ast.Return):
+                returns.append(n)
+            elif isinstance(n, ast.Raise):
+                raises.append(n)
+            stack.extend(ast.iter_child_nodes(n))
+        for r in returns:
+            if r.value is None:
+                continue
+            any_return = True
+            found = self._dict_keys(r.value)
+            if found is None:
+                complete = False
+            else:
+                keys |= found[0]
+                complete = complete and found[1]
+        if any(isinstance(x.exc, ast.Call) and isinstance(x.exc.func, ast.Name) and x.exc.func.id == "HTTPException"
+               for x in raises):
+            keys.add("detail")
+        if model in self.class_fields:
+            keys = {f for f, _ in self.class_fields[model]}
+            complete = True
+        contract: dict = {"response_keys": sorted(keys), "response_complete": bool(complete and (any_return or model))}
+
+        fields: dict[str, bool] = {}
+        data_vars: set[str] = set()
+        for arg in [*fn.args.args, *fn.args.kwonlyargs]:
+            cls = self._annotation_class(arg.annotation)
+            if cls in self.class_fields:
+                fields.update({f: req for f, req in self.class_fields[cls]})
+        for n in ast.walk(fn):
+            if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name):
+                v = n.value
+                if (isinstance(v, ast.Call) and isinstance(v.func, ast.Attribute) and v.func.attr == "get_json"
+                        and isinstance(v.func.value, ast.Name) and v.func.value.id == "request") or \
+                        (isinstance(v, ast.Attribute) and v.attr == "json" and isinstance(v.value, ast.Name)
+                         and v.value.id == "request"):
+                    data_vars.add(n.targets[0].id)
+        for n in ast.walk(fn):
+            if isinstance(n, ast.Subscript) and isinstance(n.value, ast.Name) and n.value.id in data_vars \
+                    and isinstance(n.slice, ast.Constant) and isinstance(n.slice.value, str):
+                fields[n.slice.value] = True
+            elif isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "get" \
+                    and isinstance(n.func.value, ast.Name) and n.func.value.id in data_vars \
+                    and n.args and isinstance(n.args[0], ast.Constant) and isinstance(n.args[0].value, str):
+                fields.setdefault(n.args[0].value, False)
+        if fields:
+            contract["request_fields"] = dict(sorted(fields.items()))
+        return contract
+
+    def _dict_keys(self, value: ast.expr) -> tuple[set[str], bool] | None:
+        """(keys, complete) for a returned dict literal / jsonify(...) call, or None if unreadable."""
+        if isinstance(value, ast.Dict):
+            keys = {k.value for k in value.keys if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+            return keys, all(isinstance(k, ast.Constant) and isinstance(k.value, str) for k in value.keys)
+        if isinstance(value, ast.Call):
+            name = value.func.id if isinstance(value.func, ast.Name) else (
+                value.func.attr if isinstance(value.func, ast.Attribute) else "")
+            if name in self._RESPONSE_CALLS:
+                if value.args and isinstance(value.args[0], ast.Dict):
+                    return self._dict_keys(value.args[0])
+                content = next((k.value for k in value.keywords if k.arg == "content"), None)
+                if isinstance(content, ast.Dict):
+                    return self._dict_keys(content)
+                if not value.args and value.keywords and all(k.arg for k in value.keywords):
+                    return {k.arg for k in value.keywords}, True
+        return None
 
     def visit_Call(self, node: ast.Call) -> None:
         """Inspect calls inside functions/methods and attempt resolution."""

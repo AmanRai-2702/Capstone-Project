@@ -31,6 +31,23 @@ class ImpactedComponent(BaseModel):
     explanation: str
 
 
+class RiskFactor(BaseModel):
+    """One evidence-backed reason for the risk level. `evidence` holds source locations (file:start-end)."""
+    factor: str            # entry_points | signature_change | data_flow | uncertain_links | cross_language | no_tests | blast_radius
+    severity: str          # high | medium | info
+    detail: str
+    evidence: list[str] = Field(default_factory=list)
+
+
+class TestSuggestion(BaseModel):
+    """A test file worth re-running and why. `score`: 2 per impacted/changed component its code calls or
+    uses, plus 1 if it imports a file that contains impacted code."""
+    __test__ = False       # not a pytest test class
+    file: str
+    score: int
+    reasons: list[str] = Field(default_factory=list)
+
+
 class ImpactReport(BaseModel):
     target: str                         # what the user asked about (or a label for a diff)
     changed: list[str]                  # entity ids treated as changed (target + contained entities)
@@ -44,6 +61,12 @@ class ImpactReport(BaseModel):
     suggested_tests: list[str] = Field(default_factory=list)        # test files that touch impacted code
     risk: str = "low"                   # low | medium | high  (heuristic, see ImpactService)
     risk_reason: str = ""
+    risk_factors: list[RiskFactor] = Field(default_factory=list)
+    suggested_test_details: list[TestSuggestion] = Field(default_factory=list)
+    # entity id -> how it changed: "signature" (its first line was edited), "body", "file" (outside any entity),
+    # "dependency" (imports a package whose version line changed), "deleted_file" (imports a deleted file)
+    change_kinds: dict[str, str] = Field(default_factory=dict)
+    notes: list[str] = Field(default_factory=list)       # things the reader should know about how the input was read
 
     @property
     def impacted(self) -> list[ImpactedComponent]:

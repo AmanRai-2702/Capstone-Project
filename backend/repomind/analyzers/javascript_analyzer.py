@@ -641,7 +641,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
                     evidence=[Evidence(snippet=snippet, location=loc)]))
 
         # 0c. axios.get/post/put/patch/delete(url, ...), axios({url, method}), instance.get(...)
-        self._handle_axios_call(func_node, args_node, caller_id, loc, snippet, result)
+        self._handle_axios_call(func_node, args_node, caller_id, loc, snippet, result, node)
 
         # 1b. Dynamic classes: el.classList.toggle/add/remove("error")
         self._track_class_change(func_node, args_node, var_to_dom, result)
@@ -713,7 +713,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
                     )
                 )
 
-    def _handle_axios_call(self, func_node, args_node, caller_id, loc, snippet, result) -> None:
+    def _handle_axios_call(self, func_node, args_node, caller_id, loc, snippet, result, node=None) -> None:
         verbs = {"get", "post", "put", "patch", "delete", "head"}
         method, base, url_arg = None, "", None
         if func_node.type == "member_expression":
@@ -731,7 +731,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
             base = self._axios[func_node.text.decode("utf-8")]          # axios({ method, url })
             method, url_arg = self._config_request(args_node.named_children[0])
         if method and url_arg is not None:
-            self._handle_fetch_call(node=None, args_node=args_node, caller_id=caller_id, loc=loc, snippet=snippet,
+            self._handle_fetch_call(node=node, args_node=args_node, caller_id=caller_id, loc=loc, snippet=snippet,
                                     result=result, method=method, base=base, url_node=url_arg)
 
     @staticmethod
@@ -809,8 +809,142 @@ class JavaScriptAnalyzer(BaseAnalyzer):
                     kind=kind,
                     confidence=confidence,
                     evidence=[Evidence(snippet=snippet, location=loc)],
+                    metadata=self._contract_metadata(node, args_node, method, explicit_method, via_wrapper),
                 )
             )
+
+    # ------------------------------------------------------------------ API contract seen from the client
+    def _contract_metadata(self, call_node, args_node, method: str, explicit_method: bool, via_wrapper: bool) -> dict:
+        """{"sent_keys": [...] | None, "read_keys": [...] | None}: the JSON keys this request sends and the keys
+        the surrounding function reads from the response. None = not statically readable (a variable body, a
+        response that is passed on as a whole, several requests in one function): unknown, not "none"."""
+        return {"sent_keys": self._sent_keys(args_node, method, explicit_method),
+                "read_keys": None if via_wrapper or call_node is None else self._read_keys(call_node)}
+
+    def _object_keys(self, obj) -> list[str] | None:
+        keys = []
+        for child in obj.named_children:
+            if child.type == "shorthand_property_identifier":
+                keys.append(child.text.decode("utf-8"))
+            elif child.type == "pair":
+                k = child.child_by_field_name("key")
+                if k is None:
+                    return None
+                keys.append(_strip_quotes(k.text.decode("utf-8")))
+            else:
+                return None                                   # spread or computed key
+        return sorted(set(keys))
+
+    def _sent_keys(self, args_node, method: str, explicit_method: bool) -> list[str] | None:
+        named = args_node.named_children
+        if explicit_method:                                    # axios.post(url, data) / put / patch
+            if method in ("GET", "DELETE", "HEAD"):
+                return []
+            return self._object_keys(named[1]) if len(named) > 1 and named[1].type == "object" else None
+        if len(named) < 2 or named[1].type != "object":
+            return [] if method == "GET" else None            # fetch(url) is a GET without a body
+        for pair in named[1].named_children:                  # fetch(url, { method, body: JSON.stringify({...}) })
+            k = pair.child_by_field_name("key") if pair.type == "pair" else None
+            if k is not None and k.text.decode("utf-8").strip("\"'") == "body":
+                v = pair.child_by_field_name("value")
+                if v is not None and v.type == "call_expression" and v.child_by_field_name("function") is not None \
+                        and v.child_by_field_name("function").text == b"JSON.stringify":
+                    a = v.child_by_field_name("arguments")
+                    if a is not None and a.named_children and a.named_children[0].type == "object":
+                        return self._object_keys(a.named_children[0])
+                return None
+        return []                                              # an options object without a body sends none
+
+    def _enclosing_function(self, node):
+        n = node.parent
+        while n is not None and n.type not in ("function_declaration", "arrow_function", "function", "function_expression",
+                                               "method_definition"):
+            n = n.parent
+        return n
+
+    def _read_keys(self, call_node) -> list[str] | None:
+        """Keys read from this request's JSON response inside its function: `const data = await res.json()` then
+        `data.message`, `data["x"]`, `const { a, b } = data`; for axios `res.data.key`. Only when the function makes
+        exactly one request and at least one key is actually accessed."""
+        fn = self._enclosing_function(call_node)
+        if fn is None:
+            return None
+        requests = 0
+        stack = [fn]
+        while stack:
+            n = stack.pop()
+            if n.type == "call_expression":
+                f = n.child_by_field_name("function")
+                if f is not None and (f.text == b"fetch" or f.text.decode("utf-8") in self._wrappers
+                                      or (f.type == "member_expression" and f.child_by_field_name("object") is not None
+                                          and f.child_by_field_name("object").text.decode("utf-8") in self._axios)):
+                    requests += 1
+            stack.extend(n.children)
+        if requests != 1:
+            return None
+        json_vars, resp_vars, keys = set(), set(), set()
+        stack = [fn]
+        while stack:                                           # which variables hold the parsed response?
+            n = stack.pop()
+            if n.type == "variable_declarator":
+                name, val = n.child_by_field_name("name"), n.child_by_field_name("value")
+                inner = val.named_children[0] if val is not None and val.type == "await_expression" and val.named_children else val
+                if name is not None and inner is not None:
+                    if inner.id == call_node.id:
+                        resp_vars.add(name.text.decode("utf-8"))              # axios: res; res.data is the body
+                    elif inner.type == "call_expression":
+                        f = inner.child_by_field_name("function")
+                        if f is not None and f.type == "member_expression" and f.child_by_field_name("property") is not None \
+                                and f.child_by_field_name("property").text == b"json":
+                            if name.type == "identifier":
+                                json_vars.add(name.text.decode("utf-8"))
+                            elif name.type == "object_pattern":
+                                keys |= self._pattern_keys(name)
+            stack.extend(n.children)
+
+        def is_body(expr) -> bool:
+            if expr is None:
+                return False
+            if expr.type == "identifier":
+                return expr.text.decode("utf-8") in json_vars
+            if expr.type == "member_expression":              # res.data
+                o, p = expr.child_by_field_name("object"), expr.child_by_field_name("property")
+                return o is not None and p is not None and o.type == "identifier" \
+                    and o.text.decode("utf-8") in resp_vars and p.text == b"data"
+            return False
+
+        stack = [fn]
+        while stack:
+            n = stack.pop()
+            if n.type == "member_expression" and is_body(n.child_by_field_name("object")):
+                p = n.child_by_field_name("property")
+                called = n.parent is not None and n.parent.type == "call_expression" and                     n.parent.child_by_field_name("function") is not None and n.parent.child_by_field_name("function").id == n.id
+                # `data.length` / `data.map(...)` use the array itself, they are not keys of the response object
+                if p is not None and not called and p.text != b"length":
+                    keys.add(p.text.decode("utf-8"))
+            elif n.type == "subscript_expression" and is_body(n.child_by_field_name("object")):
+                idx = n.child_by_field_name("index")
+                if idx is not None and idx.type == "string":
+                    keys.add(_strip_quotes(idx.text.decode("utf-8")))
+            elif n.type == "variable_declarator":
+                name, val = n.child_by_field_name("name"), n.child_by_field_name("value")
+                if name is not None and name.type == "object_pattern" and is_body(val):
+                    keys |= self._pattern_keys(name)
+            stack.extend(n.children)
+        return sorted(keys) if keys else None
+
+    @staticmethod
+    def _pattern_keys(pattern) -> set[str]:
+        out = set()
+        for c in pattern.named_children:
+            if c.type == "shorthand_property_identifier_pattern":
+                out.add(c.text.decode("utf-8"))
+            elif c.type == "pair_pattern":
+                k = c.child_by_field_name("key")
+                if k is not None:
+                    out.add(_strip_quotes(k.text.decode("utf-8")))
+        return out
+
 
     def _collect_namespaces_in(self, node, rel_path: str) -> None:
         """Register `const ns = await import("./x.js")` declared inside a handler before its calls are read

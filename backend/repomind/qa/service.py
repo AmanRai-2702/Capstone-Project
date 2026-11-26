@@ -55,7 +55,7 @@ class QAService:
         self.graph = graph or RepositoryGraph.from_analysis(analysis)
         self.provider = provider or TemplateProvider()
         settings = settings or Settings.from_env()
-        self.retriever = Retriever(analysis, self.graph, ImpactService(self.graph),
+        self.retriever = Retriever(analysis, self.graph, ImpactService(self.graph, analysis.unresolved),
                                    settings.retrieval_mode, settings.embedding_model,
                                    settings.workspace_dir / "embeddings")
         self._template = TemplateProvider()

@@ -8,6 +8,10 @@ BFS gives the shortest dependency chain, which doubles as the explanation.
 Changing a container (a file or class) means everything it contains changes too,
 so those are used as the BFS sources.
 
+In strict mode (off by default) impact does not flow through a REFERENCES edge into the referrer of an HTML
+element that was itself reached only through its handler (identity vs behaviour, see _analyze). The default
+reports those referrers as "indirect", which over-approximates but never misses a structural dependent.
+
 Each impacted component is classified:
   direct         depends on the changed component itself (distance 1)
   execution_flow reached only through execution edges (CALLS / REQUESTS / HANDLES / TRIGGERS)
@@ -33,7 +37,7 @@ from collections import deque
 from repomind.graph import RepositoryGraph
 from repomind.graph.repository_graph import CONSTRUCTS, FLOW_EDGES
 from repomind.models import RelationType
-from repomind.models.impact import ImpactedComponent, ImpactHop, ImpactReport
+from repomind.models.impact import ImpactedComponent, ImpactHop, ImpactReport, RiskFactor, TestSuggestion
 
 TEST_FILE = re.compile(r"(^|/)(tests?|__tests__|spec)/|(^|/)test_[^/]*\.py$|\.(test|spec)\.[jt]sx?$", re.I)
 FLOW_TYPES = {t.value for t in FLOW_EDGES} | {CONSTRUCTS}
@@ -63,9 +67,53 @@ def parse_unified_diff(diff: str) -> dict[str, list[tuple[int, int]]]:
     return changes
 
 
+def parse_diff_files(diff: str) -> tuple[dict[str, dict[str, list[str]]], set[str]]:
+    """({file: {"added": [lines], "removed": [lines]}}, deleted files) from unified diff text."""
+    lines_by_file: dict[str, dict[str, list[str]]] = {}
+    deleted: set[str] = set()
+    old = new = None
+    for line in diff.splitlines():
+        if line.startswith("--- "):
+            path = line[4:].split("\t")[0].strip()
+            old = None if path == "/dev/null" else (path[2:] if path.startswith("a/") else path)
+        elif line.startswith("+++ "):
+            path = line[4:].split("\t")[0].strip()
+            new = None if path == "/dev/null" else (path[2:] if path.startswith("b/") else path)
+            if new is None and old:
+                deleted.add(old)
+        elif line.startswith(("+", "-")) and (new or old):
+            bucket = lines_by_file.setdefault(new or old, {"added": [], "removed": []})
+            bucket["added" if line[0] == "+" else "removed"].append(line[1:])
+    return lines_by_file, deleted
+
+
+_REQ_LINE = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)")
+_PKG_JSON_LINE = re.compile(r'"([^"]+)"\s*:\s*"[^"]*"')
+
+
+def changed_packages(path: str, added: list[str], removed: list[str]) -> set[str]:
+    """Normalised package names whose lines changed in requirements*.txt / package.json."""
+    names: set[str] = set()
+    name = path.rsplit("/", 1)[-1].lower()
+    for line in [*added, *removed]:
+        if name.startswith("requirements") and name.endswith(".txt"):
+            m = _REQ_LINE.match(line) if not line.lstrip().startswith(("#", "-")) else None
+        elif name == "package.json":
+            m = _PKG_JSON_LINE.search(line)
+        else:
+            m = None
+        if m:
+            names.add(m.group(1).lower().replace("-", "_").replace(".", "_"))
+    return names
+
+
 class ImpactService:
-    def __init__(self, graph: RepositoryGraph):
+    def __init__(self, graph: RepositoryGraph, unresolved: list | None = None, strict_references: bool = False):
         self.graph = graph
+        self.strict_references = strict_references
+        # What the analysis could not connect (external packages, deleted files...). Needed to map a changed
+        # dependency or a deleted file to the code that used it.
+        self.unresolved = list(unresolved or [])
 
     # ------------------------------------------------------------------ entry points
     def resolve_target(self, target: str) -> str:
@@ -77,18 +125,26 @@ class ImpactService:
             raise ImpactError(f"'{target}' is ambiguous ({len(matches)} matches): {options}")
         return matches[0].id
 
-    def analyze_impact(self, target: str, max_depth: int = 10) -> ImpactReport:
+    def analyze_impact(self, target: str, max_depth: int = 10, strict: bool | None = None) -> ImpactReport:
         target_id = self.resolve_target(target)
-        return self._analyze([target_id], target_id, max_depth)
+        return self._analyze([target_id], target_id, max_depth, strict=strict)
 
     def entities_for_changes(self, changes: dict[str, list[tuple[int, int]]]) -> list[str]:
         """Map changed line ranges to the smallest entities that contain them
         (falling back to the file when a change is outside every entity)."""
+        return sorted(self.classify_changes(changes))
+
+    def classify_changes(self, changes: dict[str, list[tuple[int, int]]]) -> dict[str, str]:
+        """entity id -> "signature" | "body" | "file". A change that touches an entity's first line (its
+        `def`/`class`/`function` line) is a signature change: callers may no longer fit. Anything else inside
+        it is a body change: behaviour may differ but the interface is intact."""
+        kinds: dict[str, str] = {}
         selected: set[str] = set()
         for file_path, ranges in changes.items():
             file_id = f"file:{file_path}"
-            if not self.graph.has_node(file_id):
-                continue
+            file_entity = self.graph.get_entity(file_id)
+            if file_entity is None or file_entity.metadata.get("category") != "source":
+                continue                                    # docs and config files hold no code that can break
             inside = [e for e in self.graph.entities.values()
                       if e.location and e.location.file_path == file_path and e.type.value != "file"]
             for start, end in ranges:
@@ -100,20 +156,66 @@ class ImpactService:
                     and (o.location.end_line - o.location.start_line) < (e.location.end_line - e.location.start_line)
                     for o in hits)]
                 if leaves:
-                    selected.update(e.id for e in leaves)
+                    for e in leaves:
+                        touches_head = e.location.start_line >= start and e.location.start_line <= end
+                        if touches_head and e.type.value in ("function", "method", "class"):
+                            kinds[e.id] = "signature"
+                        else:
+                            kinds.setdefault(e.id, "body")
                 else:
-                    selected.add(file_id)
-        return sorted(selected)
+                    kinds.setdefault(file_id, "file")
+        return kinds
 
     def analyze_diff(self, diff: str, max_depth: int = 10) -> ImpactReport:
         changes = parse_unified_diff(diff)
-        ids = self.entities_for_changes(changes)
+        kinds = self.classify_changes(changes)
+        notes: list[str] = []
+        files, deleted = parse_diff_files(diff)
+
+        # A changed dependency (requirements.txt / package.json): the files that import it may break.
+        for path, lines in files.items():
+            pkgs = changed_packages(path, lines["added"], lines["removed"])
+            if not pkgs:
+                continue
+            users = {self._file_id_of(u.source_id) for u in self.unresolved if u.reason == "external_package"
+                     and u.detail and u.detail.split(".")[0].lower().replace("-", "_") in pkgs}
+            users.discard(None)
+            for f in users:
+                kinds.setdefault(f, "dependency")
+            notes.append(f"{path}: package(s) {', '.join(sorted(pkgs))} changed; "
+                         + (f"{len(users)} file(s) import them and are treated as changed."
+                            if users else "no analysed file imports them (JavaScript packages are not tracked)."))
+        # A deleted file: whatever still imports it is now broken.
+        for path in deleted:
+            module = re.sub(r"(/__init__)?\.py$", "", path).replace("/", ".")
+            # the importers of a missing module look like either an unmatched file target or an "external"
+            # package of that name (the resolver cannot tell a deleted module from an absent library)
+            users = {self._file_id_of(u.source_id) for u in self.unresolved
+                     if (u.reason == "unresolved_target" and self._target_path(u.target_id) == path)
+                     or (u.reason == "external_package" and u.detail and (u.detail == module or u.detail.startswith(module + ".")))}
+            users.discard(None)
+            for f in users:
+                kinds.setdefault(f, "deleted_file")
+            notes.append(f"{path} was deleted; " + (f"{len(users)} file(s) still reference it and are treated as changed."
+                                                    if users else "nothing in the analysed tree references it."))
+        ids = sorted(kinds)
         if not ids:
-            raise ImpactError("The diff does not touch any analysed source file.")
-        return self._analyze(ids, f"diff touching {len(ids)} component(s)", max_depth)
+            raise ImpactError("The diff does not touch any analysed source file." + (" " + " ".join(notes) if notes else ""))
+        return self._analyze(ids, f"diff touching {len(ids)} component(s)", max_depth, kinds, notes)
 
     # ------------------------------------------------------------------ core
-    def _analyze(self, target_ids: list[str], label: str, max_depth: int) -> ImpactReport:
+    def _file_id_of(self, entity_id: str) -> str | None:
+        path = self._file_of(entity_id)
+        return f"file:{path}" if path and self.graph.has_node(f"file:{path}") else None
+
+    @staticmethod
+    def _target_path(target_id: str) -> str | None:
+        m = re.match(r"^(?:file|python|javascript):(?P<p>[^:]+\.\w+)", target_id)
+        return m["p"] if m else None
+
+    def _analyze(self, target_ids: list[str], label: str, max_depth: int, kinds: dict[str, str] | None = None,
+                 notes: list[str] | None = None, strict: bool | None = None) -> ImpactReport:
+        strict = self.strict_references if strict is None else strict
         changed: set[str] = set()
         for t in target_ids:
             changed |= {t} | self.graph.descendants(t)
@@ -127,7 +229,14 @@ class ImpactService:
             node = queue.popleft()
             if dist[node] >= max_depth:
                 continue
+            behavioural_only = strict and dist[node] > 0 and self.graph.entities[node].type.value == "html_element"
             for dependent in dep.predecessors(node):   # edge dependent -> node
+                # Strict mode only. A REFERENCES edge to an HTML element is an *identity* dependency: the referrer
+                # needs the element to exist. If just what the element DOES changed (it was reached through its
+                # handler), the referrer is not affected, so impact stops there. A change to the element itself
+                # (distance 0) still reaches every referrer. The default keeps the original, broader behaviour.
+                if behavioural_only and dep.edges[dependent, node]["type"] == "REFERENCES":
+                    continue
                 if dependent not in dist:
                     dist[dependent] = dist[node] + 1
                     parent[dependent] = node
@@ -151,9 +260,13 @@ class ImpactService:
             target=label, changed=sorted(changed), direct=direct, transitive=transitive,
             blast_radius=len(components), by_language=by_language, by_type=by_type,
             by_category=by_category, affected_entry_points=sorted(entry_ids),
-            suggested_tests=self._suggest_tests(changed, {c.entity_id for c in components}),
         )
-        report.risk, report.risk_reason = self._risk(report)
+        details = self._rank_tests(changed, {c.entity_id for c in components})
+        report.suggested_test_details = details
+        report.suggested_tests = [d.file for d in details]
+        report.change_kinds = dict(kinds or {t: "target" for t in target_ids})
+        report.notes = list(notes or [])
+        report.risk, report.risk_reason, report.risk_factors = self._assess_risk(report, components)
         return report
 
     # ------------------------------------------------------------------ helpers
@@ -165,19 +278,39 @@ class ImpactService:
             return e.qualified_name
         return e.location.file_path if e.location else None
 
-    def _suggest_tests(self, changed: set[str], impacted: set[str]) -> list[str]:
-        """Test files worth re-running: those containing an impacted component, or importing a file
-        that contains changed/impacted code. Recognised by name (tests/, test_*.py, *.test.js ...).
-        Test files that hold the *changed* code itself are excluded."""
+    def _rank_tests(self, changed: set[str], impacted: set[str]) -> list[TestSuggestion]:
+        """Test files worth re-running, most relevant first. A test file qualifies when it holds an impacted
+        component, imports a file with changed/impacted code, or its code CALLS / USES / REQUESTS a
+        changed or impacted component. Test files holding the *changed* code itself are excluded.
+        Score = 2 per distinct impacted/changed component its code reaches directly, +1 for each import of
+        an involved file; reasons list what it reaches. (Recognised by name: tests/, test_*.py, *.test.js.)"""
         changed_files = {f for f in (self._file_of(i) for i in changed) if f}
+        involved_ids = changed | impacted
         involved_files = changed_files | {f for f in (self._file_of(i) for i in impacted) if f}
-        tests = {f for f in involved_files if TEST_FILE.search(f)}
+        reasons: dict[str, list[str]] = {}
+        scores: dict[str, int] = {}
+
+        def add(test: str, points: int, reason: str) -> None:
+            if reason not in reasons.setdefault(test, []):
+                reasons[test].append(reason)
+                scores[test] = scores.get(test, 0) + points
+
+        for f in involved_files:
+            if TEST_FILE.search(f):
+                add(f, 1, "contains an impacted component")
         for u, v, data in self.graph.g.edges(data=True):
+            src_file = self._file_of(u)
+            if not src_file or not TEST_FILE.search(src_file):
+                continue
             if data["type"] == RelationType.IMPORTS.value and self._file_of(v) in involved_files:
-                src = self._file_of(u)
-                if src and TEST_FILE.search(src):
-                    tests.add(src)
-        return sorted(tests - changed_files)
+                add(src_file, 1, f"imports {self._file_of(v)}")
+            elif data["type"] in ("CALLS", "USES", "REQUESTS", "DATA_FLOW") and v in involved_ids:
+                add(src_file, 2, f"{data['type'].lower()} {self._short(v)}")
+        return [TestSuggestion(file=f, score=scores[f], reasons=reasons[f])
+                for f in sorted(scores, key=lambda f: (-scores[f], f)) if f not in changed_files]
+
+    def _suggest_tests(self, changed: set[str], impacted: set[str]) -> list[str]:
+        return [t.file for t in self._rank_tests(changed, impacted)]
 
     def _component(self, node: str, distance: int, parent: dict[str, str], dep) -> ImpactedComponent:
         chain: list[ImpactHop] = []
@@ -237,12 +370,78 @@ class ImpactService:
                          f"{self._short(h.dependency)}{tag}")
         return "; ".join(parts)
 
+    def _assess_risk(self, report: ImpactReport, components: list[ImpactedComponent]):
+        """Transparent heuristic, not a trained model, and its confidence figures are not probabilities.
+
+        Level:  high    - reaches a UI element or API endpoint (user-visible), or radius >= 10, or a signature
+                          change with >= 3 direct dependents
+                medium  - radius >= 3, or a signature change with any dependent
+                low     - otherwise
+        Every level comes with the factors that explain it, each with source locations as evidence."""
+        factors: list[RiskFactor] = []
+
+        def loc(ids, limit=4):
+            out: list[str] = []
+            for i in ids:
+                e = self.graph.get_entity(i)
+                where = f"{e.location.file_path}:{e.location.start_line}-{e.location.end_line}" if e and e.location else None
+                if where and where not in out:
+                    out.append(where)
+            return out[:limit]
+
+        direct = len(report.direct)
+        signature = [i for i, k in report.change_kinds.items() if k == "signature"]
+        if report.affected_entry_points:
+            names = ", ".join(self._short(i) for i in report.affected_entry_points[:3])
+            factors.append(RiskFactor(factor="entry_points", severity="high",
+                                      detail=f"reaches {len(report.affected_entry_points)} user-facing entry point(s): {names}",
+                                      evidence=loc(report.affected_entry_points)))
+        if signature and direct:
+            factors.append(RiskFactor(
+                factor="signature_change", severity="high" if direct >= 3 else "medium",
+                detail=f"the first line (signature) of {', '.join(self._short(i) for i in signature[:3])} is edited and "
+                       f"{direct} component(s) depend on it directly, so call sites may no longer fit",
+                evidence=loc(signature)))
+        if report.blast_radius >= 10:
+            factors.append(RiskFactor(factor="blast_radius", severity="high",
+                                      detail=f"large blast radius ({report.blast_radius} components)"))
+        elif report.blast_radius >= 3:
+            factors.append(RiskFactor(factor="blast_radius", severity="medium",
+                                      detail=f"blast radius {report.blast_radius}"))
+        data = [c for c in components if c.category == "data_flow"]
+        if data:
+            factors.append(RiskFactor(factor="data_flow", severity="info",
+                                      detail=f"{len(data)} component(s) are affected through data they receive or "
+                                             "shared state, which is easy to miss when reading call sites",
+                                      evidence=loc([c.entity_id for c in data])))
+        uncertain = [c for c in components if c.uncertain]
+        if components and len(uncertain) * 2 > len(components):
+            factors.append(RiskFactor(factor="uncertain_links", severity="info",
+                                      detail=f"{len(uncertain)} of {len(components)} impacts rest on inferred links: "
+                                             "verify them before relying on the list"))
+        languages = ({c.language for c in components}
+                     | {self.graph.get_entity(i).language.value for i in report.changed if self.graph.get_entity(i)})
+        if len(languages - {"unknown"}) > 1:
+            factors.append(RiskFactor(factor="cross_language", severity="info",
+                                      detail="the change crosses a language boundary (e.g. Python backend <-> JavaScript client)"))
+        if report.blast_radius and not report.suggested_tests:
+            factors.append(RiskFactor(factor="no_tests", severity="medium",
+                                      detail="no test file reaches the changed or impacted code"))
+
+        high = any(f.severity == "high" for f in factors)
+        medium = any(f.severity == "medium" for f in factors)
+        level = "high" if high else "medium" if medium else "low"
+        ranked = [f for f in factors if f.severity != "info"] or factors
+        if level == "low" and not factors:
+            reason = f"blast radius {report.blast_radius}"
+        else:
+            reason = "; ".join(f.detail for f in sorted(ranked, key=lambda f: f.severity != "high")[:2]) \
+                if ranked else f"blast radius {report.blast_radius}"
+        return level, reason, factors
+
     @staticmethod
     def _risk(report: ImpactReport) -> tuple[str, str]:
-        """Transparent heuristic, not a trained model:
-        high   - reaches a UI element or API endpoint (user-visible), or radius >= 10
-        medium - radius >= 3
-        low    - otherwise"""
+        """Kept for callers of the old API: the entry-point / radius rule only."""
         if report.affected_entry_points:
             return "high", f"reaches {len(report.affected_entry_points)} user-facing entry point(s)"
         if report.blast_radius >= 10:
