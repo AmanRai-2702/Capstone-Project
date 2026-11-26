@@ -157,7 +157,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("ask", help="ask a question about the repository")
     p.add_argument("location")
     p.add_argument("question")
-    p.add_argument("--provider", default=None, help="template (default, offline) or anthropic")
+    p.add_argument("--provider", default=None, help="template (offline), openrouter or anthropic; default: REPOMIND_LLM_PROVIDER")
     p.add_argument("--json", action="store_true")
     p.add_argument("--exclude", action="append", default=[], metavar="PATTERN")
 
@@ -249,6 +249,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(ans.model_dump_json(indent=2))
             else:
                 print(ans.answer)
+                model = f" / {ans.model}" if ans.model else ""
+                note = f", FALLBACK from {ans.requested_provider} ({ans.fallback_reason})" if ans.fallback else ""
+                print(f"\n[provider: {ans.provider}{model}{note}]")
                 for w in ans.warnings:
                     print(f"\nWarning: {w}")
             return 0 if ans.grounded else 2

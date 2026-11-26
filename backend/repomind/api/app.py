@@ -86,9 +86,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                   description="Multi-language repository intelligence and change-impact analysis")
 
     # ------------------------------------------------------------------ helpers
+    provider = get_provider(settings=settings)       # one provider (and one client) shared by all sessions
+
     def build_session(analysis: RepositoryAnalysis) -> RepoSession:
         graph = RepositoryGraph.from_analysis(analysis)
-        return RepoSession(analysis, graph, ImpactService(graph), QAService(analysis, graph, get_provider()))
+        return RepoSession(analysis, graph, ImpactService(graph), QAService(analysis, graph, provider))
 
     def session(repo_id: str) -> RepoSession:
         with lock:
@@ -317,6 +319,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not req.question.strip():
             raise HTTPException(422, "Question must not be empty.")
         return session(repo_id).qa.ask(req.question).model_dump(mode="json")
+
+    @api.get("/api/llm/status")
+    def llm_status() -> dict:
+        """Which answer provider is active. Never includes the API key."""
+        requested = getattr(provider, "requested", provider.name)
+        reason = getattr(provider, "fallback_reason", "")
+        return {"provider": provider.name, "model": getattr(provider, "model", ""), "requested_provider": requested,
+                "fallback": bool(reason), "fallback_reason": reason,
+                "external_llm_allowed": settings.allow_external_llm}
 
     @api.post("/api/repositories/{repo_id}/ask")
     def ask(repo_id: str, req: AskRequest) -> dict:
