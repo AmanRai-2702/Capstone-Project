@@ -46,6 +46,7 @@ class PythonASTVisitor(ast.NodeVisitor):
         self.imported_symbols: dict[str, str] = {}
         # e.g. "auth_service": "AuthService", "self.users": "UserRepository"
         self.var_types: dict[str, str] = {}
+        self.import_names: dict[str, str] = {}      # local alias -> original name (`from x import A as B` -> {"B": "A"})
         # Variables whose class came from the repository-wide type index: name -> (defining file, class name)
         self.var_refs: dict[str, tuple[str, str]] = {}
         # name -> entity id of the call whose result it holds (`order = Order(...)`): feeds DATA_FLOW edges
@@ -102,7 +103,7 @@ class PythonASTVisitor(ast.NodeVisitor):
                     return (self.rel_path, base, RelationKind.INFERRED, 0.9)
                 queue.extend(self.class_bases.get(base, []))
             elif base in self.imported_symbols:
-                return (self.imported_symbols[base], base, RelationKind.HEURISTIC, 0.6)
+                return (self.imported_symbols[base], self._orig(base), RelationKind.HEURISTIC, 0.6)
         return None
 
     def _module_path(self, module: str | None, level: int = 0) -> str:
@@ -175,8 +176,14 @@ class PythonASTVisitor(ast.NodeVisitor):
             for alias in node.names:
                 # Track symbol name to source module path
                 self.imported_symbols[alias.asname or alias.name] = mod_path
+                self.import_names[alias.asname or alias.name] = alias.name
 
         self.generic_visit(node)
+
+    def _typed(self, ann: ast.expr | None) -> str | None:
+        """Class named by an annotation, with repository type aliases replaced by what they stand for."""
+        cls = self._annotation_class(ann)
+        return self.types.unalias(cls) if cls and self.types is not None else cls
 
     @staticmethod
     def _annotation_class(ann: ast.expr | None) -> str | None:
@@ -211,6 +218,10 @@ class PythonASTVisitor(ast.NodeVisitor):
         return None
 
     # ------------------------------------------------------------------ expression types
+    def _orig(self, name: str) -> str:
+        """The name a symbol has where it is defined (undoes `import X as Y`)."""
+        return self.import_names.get(name, name) if name in self.imported_symbols and name not in self.local_classes else name
+
     def _class_ref(self, name: str | None, prefer: str | None = None) -> tuple[str, str] | None:
         """(defining file, class) for a class NAME as seen from this file; None if unknown or ambiguous."""
         if not name:
@@ -222,7 +233,7 @@ class PythonASTVisitor(ast.NodeVisitor):
             if ref:
                 return ref
         if name in self.imported_symbols:
-            return self.imported_symbols[name], name
+            return self.imported_symbols[name], self._orig(name)
         return None
 
     def _expr_ref(self, e: ast.expr | None) -> tuple[str, str] | None:
@@ -357,7 +368,7 @@ class PythonASTVisitor(ast.NodeVisitor):
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         """x: Foo = ...  /  self.x: Foo = ...  (the annotation wins over the value)."""
-        cls_name = self._annotation_class(node.annotation)
+        cls_name = self._typed(node.annotation)
         key = self._target_key(node.target)
         if cls_name and key:
             self.var_types[key] = cls_name
@@ -411,7 +422,7 @@ class PythonASTVisitor(ast.NodeVisitor):
                 self.result.add_relationship(
                     Relationship(
                         source_id=entity_id,
-                        target_id=make_entity_id("python", base_path, base_name),
+                        target_id=make_entity_id("python", base_path, self._orig(base_name) if base_path != self.rel_path else base_name),
                         type=RelationType.INHERITS,
                         kind=RelationKind.DETECTED,
                         confidence=1.0,
@@ -505,7 +516,8 @@ class PythonASTVisitor(ast.NodeVisitor):
         # (e.g. login(request: LoginRequest) -> the request model).
         for arg in [*node.args.args, *node.args.kwonlyargs]:
             ann = arg.annotation
-            if isinstance(ann, ast.Name) and arg.arg not in ("self", "cls"):
+            if isinstance(ann, ast.Name) and arg.arg not in ("self", "cls") and \
+                    (self.types is None or self.types.unalias(ann.id) == ann.id):      # an alias is not a class to USE
                 if ann.id in self.local_classes:
                     type_path = self.rel_path
                 elif ann.id in self.imported_symbols:
@@ -515,7 +527,7 @@ class PythonASTVisitor(ast.NodeVisitor):
                 self.result.add_relationship(
                     Relationship(
                         source_id=entity_id,
-                        target_id=make_entity_id("python", type_path, ann.id),
+                        target_id=make_entity_id("python", type_path, self._orig(ann.id) if type_path != self.rel_path else ann.id),
                         type=RelationType.USES,
                         kind=RelationKind.DETECTED,
                         confidence=1.0,
@@ -547,7 +559,7 @@ class PythonASTVisitor(ast.NodeVisitor):
         if returned:                                          # def f(...) -> Foo
             self._add_returns(returned, node, RelationKind.DETECTED, 1.0)
         for arg in [*node.args.args, *node.args.kwonlyargs]:
-            cls = self._annotation_class(arg.annotation)
+            cls = self._typed(arg.annotation)
             if cls and arg.arg not in ("self", "cls"):
                 self.var_types[arg.arg] = cls                # parameter annotation = declared type
         for stmt in node.body:
@@ -764,8 +776,11 @@ class PythonASTVisitor(ast.NodeVisitor):
             elif isinstance(node.func.value, ast.Attribute) and isinstance(node.func.value.value, ast.Name):
                 receiver = f"{node.func.value.value.id}.{node.func.value.attr}"  # e.g. "self.users"
 
+            is_self = isinstance(node.func.value, ast.Name) and node.func.value.id == "self"
             handled = owner is not None or (receiver and receiver in self.var_types)
-            if not handled and self.types is not None:
+            # `self.x()` was already decided by _method_owner: the class (or a local/imported base) defines x, or we
+            # cannot know (an external base such as unittest.TestCase supplies it). Never invent `Class.x` for it.
+            if not handled and not is_self and self.types is not None:
                 # `session(id).qa.ask()`, `x.attr.method()`: the receiver is an expression, not a plain name.
                 ref = self._expr_ref(node.func.value)
                 if ref:
@@ -783,8 +798,12 @@ class PythonASTVisitor(ast.NodeVisitor):
                 cls_name = self.var_types[receiver]
                 mod_path = self.imported_symbols.get(cls_name) or (
                     self.rel_path if cls_name in self.local_classes else None)
+                if mod_path is None and self.types is not None:
+                    # the class was reached through an alias or re-export: ask the repository-wide index
+                    ref = self.types.resolve_class(cls_name, self.rel_path)
+                    mod_path = ref[0] if ref else None
                 if mod_path:
-                    target_id = make_entity_id("python", mod_path, f"{cls_name}.{method_name}")
+                    target_id = make_entity_id("python", mod_path, f"{self._orig(cls_name)}.{method_name}")
                     self.result.add_relationship(
                         Relationship(
                             source_id=self.current_callable_id,
@@ -816,7 +835,7 @@ class PythonASTVisitor(ast.NodeVisitor):
             # If function is imported from another module
             elif func_name in self.imported_symbols:
                 mod_path = self.imported_symbols[func_name]
-                target_id = make_entity_id("python", mod_path, func_name)
+                target_id = make_entity_id("python", mod_path, self._orig(func_name))
                 self.result.add_relationship(
                     Relationship(
                         source_id=self.current_callable_id,
@@ -860,15 +879,22 @@ class PythonAnalyzer(BaseAnalyzer):
 
     def __init__(self) -> None:
         self._types: TypeIndex | None = None
+        self._trees: dict[str, ast.AST] = {}
+        self._sources: dict[str, str] = {}
 
     def prepare(self, files: dict[str, str]) -> None:
         """Optional first pass over every Python file (path -> source): builds the repository-wide type index
-        (return annotations, attribute types) used to resolve calls like `session(id).qa.ask()`."""
-        self._types = TypeIndex.build({k.replace("\\", "/"): v for k, v in files.items()})
+        (return annotations, attribute types) used to resolve calls like `session(id).qa.ask()`. The parsed trees
+        are kept so analyze_file() does not parse the same text a second time."""
+        self._types, self._trees = TypeIndex.build_with_trees({k.replace("\\", "/"): v for k, v in files.items()})
+        self._sources = {k.replace("\\", "/"): v for k, v in files.items()}
 
     def analyze_file(self, rel_path: str, content: str) -> AnalysisResult:
         try:
-            tree = ast.parse(content, filename=rel_path)
+            key = rel_path.replace("\\", "/")
+            tree = self._trees.get(key) if self._sources.get(key) == content else None
+            if tree is None:
+                tree = ast.parse(content, filename=rel_path)
         except SyntaxError as err:
             log.warning("SyntaxError parsing %s: %s", rel_path, err)
             return AnalysisResult(errors=[f"{rel_path}: syntax error at line {err.lineno}: {err.msg}"])

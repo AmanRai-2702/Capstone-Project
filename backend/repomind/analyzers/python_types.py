@@ -41,10 +41,18 @@ class TypeIndex:
     func_returns: dict[str, list[tuple[str, str]]] = field(default_factory=dict)
     method_returns: dict[tuple[str, str], dict[str, str]] = field(default_factory=dict)
     attrs: dict[tuple[str, str], dict[str, str]] = field(default_factory=dict)
+    # module-level `Name = Annotated[Real, ...]` / `Name = Optional[Real]`: Name is an ALIAS, not a class. Value is the
+    # real class name, or "" when it is not a repository class we can name (then a variable typed Name is untyped).
+    aliases: dict[str, str] = field(default_factory=dict)
 
     # ------------------------------------------------------------------ building
     @classmethod
     def build(cls, sources: dict[str, str]) -> "TypeIndex":
+        return cls.build_with_trees(sources)[0]
+
+    @classmethod
+    def build_with_trees(cls, sources: dict[str, str]) -> "tuple[TypeIndex, dict[str, ast.AST]]":
+        """The index plus the parsed trees (so the caller can reuse them instead of parsing again)."""
         idx = cls()
         trees: dict[str, ast.AST] = {}
         for path, text in sources.items():
@@ -59,9 +67,19 @@ class TypeIndex:
                         idx.classes[node.name].append(path)
         for path, tree in trees.items():
             idx._collect(path, tree)
-        return idx
+        return idx, trees
+
+    def _collect_aliases(self, tree: ast.AST) -> None:
+        for stmt in getattr(tree, "body", []):
+            if not isinstance(stmt, ast.Assign) or len(stmt.targets) != 1 or not isinstance(stmt.targets[0], ast.Name):
+                continue
+            v = stmt.value
+            if isinstance(v, ast.Subscript) and isinstance(v.value, ast.Name) and v.value.id in ("Annotated", "Optional", "Union"):
+                inner = v.slice.elts[0] if isinstance(v.slice, ast.Tuple) and v.slice.elts else v.slice
+                self.aliases[stmt.targets[0].id] = annotation_class(inner) or ""
 
     def _collect(self, path: str, tree: ast.AST) -> None:
+        self._collect_aliases(tree)
         class_bodies = {id(f): c for c in ast.walk(tree) if isinstance(c, ast.ClassDef)
                         for f in c.body if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))}
         for node in ast.walk(tree):
@@ -112,6 +130,12 @@ class TypeIndex:
         return None
 
     # ------------------------------------------------------------------ lookups
+    def unalias(self, name: str | None) -> str | None:
+        """The class a type name really stands for: aliases are replaced by their target ("" -> None)."""
+        if name and name in self.aliases and name not in self.classes:
+            return self.aliases[name] or None
+        return name
+
     def resolve_class(self, name: str | None, prefer_file: str | None = None) -> tuple[str, str] | None:
         """(defining file, class name) if the class is unambiguous: defined in `prefer_file`, or the only
         class with that name in the repository."""

@@ -268,6 +268,10 @@ class JavaScriptAnalyzer(BaseAnalyzer):
                             if dom_selector:
                                 var_to_dom[var_name] = dom_selector
 
+        # Functions declared inside other functions (closures, IIFEs, `$(function(){ ... })`) are callable by
+        # name from their siblings, so they are entities too.
+        self._collect_nested_functions(tree.root_node, rel_path, file_id, declared_functions, result)
+
         # Pass 2: Traverse entire AST to extract references, calls, fetch requests, event listeners
         self._traverse_node(
             node=tree.root_node,
@@ -282,6 +286,39 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         )
 
         return result
+
+    def _collect_nested_functions(self, root, rel_path: str, file_id: str, declared_functions: dict[str, str],
+                                  result: AnalysisResult) -> None:
+        """`function inner() {}` / `const inner = () => {}` below the top level. Names are flat per file, so a name
+        that is already declared, or that two nested scopes both declare, is skipped: calls to it would be ambiguous
+        and we do not guess."""
+        top = {id(n) for n in root.named_children}
+        found: dict[str, list] = {}
+        stack = [c for n in root.named_children for c in n.children]
+        while stack:
+            n = stack.pop()
+            if n.type == "function_declaration":
+                name = n.child_by_field_name("name")
+                if name is not None:
+                    found.setdefault(name.text.decode("utf-8"), []).append((n, n))
+            elif n.type == "variable_declarator":
+                name, val = n.child_by_field_name("name"), n.child_by_field_name("value")
+                if name is not None and name.type == "identifier" and val is not None and val.type in ("arrow_function", "function", "function_expression"):
+                    found.setdefault(name.text.decode("utf-8"), []).append((n, n))
+            stack.extend(n.children)
+        for name, nodes in sorted(found.items()):
+            if len(nodes) != 1 or name in declared_functions:
+                continue
+            node = nodes[0][0]
+            func_id = make_entity_id("javascript", rel_path, name)
+            declared_functions[name] = func_id
+            result.add_entity(Entity(
+                id=func_id, type=EntityType.FUNCTION, name=name, qualified_name=name, language=Language.JAVASCRIPT,
+                location=SourceLocation(file_path=rel_path, start_line=node.start_point[0] + 1, end_line=node.end_point[0] + 1,
+                                        start_col=node.start_point[1], end_col=node.end_point[1]),
+                parent_id=file_id, metadata={"nested": True}))
+            result.add_relationship(Relationship(source_id=file_id, target_id=func_id, type=RelationType.CONTAINS,
+                                                 kind=RelationKind.DETECTED, confidence=1.0))
 
     def _extract_dom_selector_from_node(self, node: tree_sitter.Node) -> str | None:
         """Extract selector string from document.getElementById or querySelector call."""

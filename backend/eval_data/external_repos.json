@@ -1,0 +1,18 @@
+{
+ "_about": "Unfamiliar open-source repositories used in Phase 8. They are shallow clones in workspace/external/<name> (git-ignored; re-create with the `clone` command of backend/evaluate_external.py). RepoMind only READS them: no repository code is ever executed. `path` is relative to the clone, `commit` is the pinned revision.",
+ "repos": [
+  {"name": "microblog", "url": "https://github.com/miguelgrinberg/microblog", "commit": "a975ef64864354867c88e0ed3a17ba7d17dca752"},
+  {"name": "flask", "url": "https://github.com/pallets/flask", "commit": "49943b5a94413a530761350f04e896f76e8d620e"},
+  {"name": "fastapi-template", "url": "https://github.com/tiangolo/full-stack-fastapi-template", "commit": "77e550a73bb49dd2967622c5ed11bf7a49603c93"},
+  {"name": "vanillawebprojects", "url": "https://github.com/bradtraversy/vanillawebprojects", "commit": "adc66a181a67049fb413c8862181ddc6c45ba22b"}
+ ],
+ "targets": [
+  {"id": "microblog", "repo": "microblog", "path": ".", "kind": "Flask app + Jinja templates"},
+  {"id": "flask-lib", "repo": "flask", "path": ".", "kind": "large Python library with tests and examples"},
+  {"id": "flask-javascript-example", "repo": "flask", "path": "examples/javascript", "kind": "Flask + vanilla JS fetch"},
+  {"id": "flask-tutorial", "repo": "flask", "path": "examples/tutorial", "kind": "Flask app (flaskr) + templates"},
+  {"id": "fastapi-backend", "repo": "fastapi-template", "path": "backend", "kind": "FastAPI + SQLModel backend"},
+  {"id": "fastapi-fullstack", "repo": "fastapi-template", "path": ".", "kind": "FastAPI backend + React/TypeScript frontend (TypeScript is NOT supported)"},
+  {"id": "vanilla-web-projects", "repo": "vanillawebprojects", "path": ".", "kind": "21 vanilla JS/HTML/CSS mini-apps"}
+ ]
+}

@@ -1,0 +1,503 @@
+[
+ {
+  "id": "microblog",
+  "kind": "Flask app + Jinja templates",
+  "files": 72,
+  "source_files_by_language": {
+   "python": 34,
+   "html": 18
+  },
+  "entities": 326,
+  "relationships": 367,
+  "relationships_by_type": {
+   "CONTAINS": 197,
+   "IMPORTS": 52,
+   "INHERITS": 3,
+   "CALLS": 64,
+   "DATA_FLOW": 8,
+   "READS_STATE": 4,
+   "RETURNS": 2,
+   "HANDLES": 35,
+   "REQUESTS": 1,
+   "REFERENCES": 1
+  },
+  "relationships_by_kind": {
+   "detected": 306,
+   "inferred": 61
+  },
+  "unresolved": 372,
+  "unresolved_by_reason": {
+   "external_package": 336,
+   "unresolved_target": 36
+  },
+  "analysis_errors": [],
+  "skipped_files": {
+   "ignored_directory": 1,
+   "binary_file": 1
+  },
+  "analyze_seconds": 0.58,
+  "graph_seconds": 0.004,
+  "unresolved_non_external": [
+   "unresolved_target: UserModelCase.test_password_hashing -CALLS-> UserModelCase.assertFalse",
+   "unresolved_target: UserModelCase.assertFalse -DATA_FLOW-> User.check_password",
+   "unresolved_target: UserModelCase.test_password_hashing -CALLS-> UserModelCase.assertTrue",
+   "unresolved_target: UserModelCase.assertTrue -DATA_FLOW-> User.check_password",
+   "unresolved_target: UserModelCase.test_avatar -CALLS-> UserModelCase.assertEqual",
+   "unresolved_target: UserModelCase.assertEqual -DATA_FLOW-> User.avatar",
+   "unresolved_target: UserModelCase.test_follow -CALLS-> UserModelCase.assertEqual",
+   "unresolved_target: UserModelCase.test_follow -CALLS-> UserModelCase.assertTrue",
+   "unresolved_target: UserModelCase.assertTrue -DATA_FLOW-> User.is_following",
+   "unresolved_target: UserModelCase.assertEqual -DATA_FLOW-> User.following_count",
+   "unresolved_target: UserModelCase.assertEqual -DATA_FLOW-> User.followers_count",
+   "unresolved_target: UserModelCase.test_follow -CALLS-> UserModelCase.assertFalse",
+   "unresolved_target: UserModelCase.assertFalse -DATA_FLOW-> User.is_following",
+   "unresolved_target: UserModelCase.test_follow_posts -CALLS-> UserModelCase.assertEqual",
+   "unresolved_target: url_for -DATA_FLOW-> User"
+  ],
+  "python": {
+   "census_definitions": 135,
+   "extracted": 135,
+   "definition_recall": 1.0,
+   "missing_examples": [],
+   "unparsable_files": 0,
+   "census_routes": 35,
+   "routes_found": 35,
+   "route_recall": 1.0,
+   "routes_missed": [],
+   "routes_extra": []
+  },
+  "html": {
+   "census_ids": 2,
+   "elements_with_id": 6,
+   "id_recall": 1.0
+  },
+  "graph": {
+   "entry_points": 34,
+   "nodes": 326
+  },
+  "peak_python_heap_mb": 3.6
+ },
+ {
+  "id": "flask-lib",
+  "kind": "large Python library with tests and examples",
+  "files": 227,
+  "source_files_by_language": {
+   "python": 83,
+   "html": 20,
+   "css": 2
+  },
+  "entities": 1824,
+  "relationships": 2712,
+  "relationships_by_type": {
+   "CONTAINS": 1422,
+   "IMPORTS": 217,
+   "RETURNS": 65,
+   "CALLS": 544,
+   "DATA_FLOW": 28,
+   "HANDLES": 220,
+   "USES": 84,
+   "READS_STATE": 61,
+   "INHERITS": 35,
+   "REFERENCES": 3,
+   "STYLES": 33
+  },
+  "relationships_by_kind": {
+   "detected": 2220,
+   "inferred": 484,
+   "heuristic": 8
+  },
+  "unresolved": 804,
+  "unresolved_by_reason": {
+   "unresolved_target": 159,
+   "external_package": 644,
+   "no_matching_endpoint": 1
+  },
+  "analysis_errors": [],
+  "skipped_files": {
+   "ignored_directory": 1,
+   "binary_file": 8,
+   "sensitive_file": 1
+  },
+  "analyze_seconds": 8.44,
+  "graph_seconds": 0.029,
+  "unresolved_non_external": [
+   "unresolved_target: examples/tutorial/flaskr/templates/base.html -REFERENCES-> examples/tutorial/flaskr/templates/{{ url_for('static', filename='style.css') }}",
+   "unresolved_target: FlaskTask.__call__ -CALLS-> FlaskTask.run",
+   "unresolved_target: makedirs -DATA_FLOW-> Flask",
+   "unresolved_target: Flask.create_jinja_environment -CALLS-> App.jinja_environment",
+   "unresolved_target: Flask.test_client -CALLS-> cls",
+   "unresolved_target: Flask.test_cli_runner -CALLS-> cls",
+   "unresolved_target: Flask.make_default_options_response -CALLS-> App.response_class",
+   "unresolved_target: Flask.make_response -CALLS-> App.response_class",
+   "unresolved_target: Flask.test_request_context -CALLS-> EnvironBuilder.get_environ",
+   "unresolved_target: Flask.test_request_context -CALLS-> EnvironBuilder.close",
+   "unresolved_target: Flask.request_context -DATA_FLOW-> EnvironBuilder.get_environ",
+   "unresolved_target: Flask.wsgi_app -CALLS-> App.should_ignore_error",
+   "unresolved_target: Blueprint -INHERITS-> SansioBlueprint",
+   "unresolved_target: ScriptInfo.load_app -CALLS-> ScriptInfo.create_app",
+   "unresolved_target: FlaskGroup.__init__ -CALLS-> FlaskGroup.add_command"
+  ],
+  "python": {
+   "census_definitions": 1298,
+   "extracted": 1298,
+   "definition_recall": 1.0,
+   "missing_examples": [],
+   "unparsable_files": 0,
+   "census_routes": 141,
+   "routes_found": 141,
+   "route_recall": 1.0,
+   "routes_missed": [],
+   "routes_extra": []
+  },
+  "html": {
+   "census_ids": 10,
+   "elements_with_id": 16,
+   "id_recall": 1.0
+  },
+  "graph": {
+   "entry_points": 141,
+   "nodes": 1824
+  },
+  "peak_python_heap_mb": 20.8
+ },
+ {
+  "id": "flask-javascript-example",
+  "kind": "Flask + vanilla JS fetch",
+  "files": 12,
+  "source_files_by_language": {
+   "python": 4,
+   "html": 4
+  },
+  "entities": 44,
+  "relationships": 26,
+  "relationships_by_type": {
+   "CONTAINS": 20,
+   "IMPORTS": 3,
+   "HANDLES": 3
+  },
+  "relationships_by_kind": {
+   "detected": 26
+  },
+  "unresolved": 11,
+  "unresolved_by_reason": {
+   "external_package": 7,
+   "unresolved_target": 4
+  },
+  "analysis_errors": [],
+  "skipped_files": {},
+  "analyze_seconds": 0.02,
+  "graph_seconds": 0.0,
+  "unresolved_non_external": [
+   "unresolved_target: addShow -REFERENCES-> #result",
+   "unresolved_target: js_example/templates/fetch.html -REFERENCES-> #calc",
+   "unresolved_target: addShow -REFERENCES-> #result",
+   "unresolved_target: js_example/templates/xhr.html -REFERENCES-> #calc"
+  ],
+  "python": {
+   "census_definitions": 7,
+   "extracted": 7,
+   "definition_recall": 1.0,
+   "missing_examples": [],
+   "unparsable_files": 0,
+   "census_routes": 3,
+   "routes_found": 3,
+   "route_recall": 1.0,
+   "routes_missed": [],
+   "routes_extra": []
+  },
+  "html": {
+   "census_ids": 2,
+   "elements_with_id": 2,
+   "id_recall": 1.0
+  },
+  "graph": {
+   "entry_points": 3,
+   "nodes": 44
+  },
+  "peak_python_heap_mb": 0.3
+ },
+ {
+  "id": "flask-tutorial",
+  "kind": "Flask app (flaskr) + templates",
+  "files": 22,
+  "source_files_by_language": {
+   "python": 9,
+   "css": 1,
+   "html": 6
+  },
+  "entities": 141,
+  "relationships": 165,
+  "relationships_by_type": {
+   "CONTAINS": 95,
+   "HANDLES": 12,
+   "IMPORTS": 10,
+   "CALLS": 23,
+   "RETURNS": 1,
+   "READS_STATE": 2,
+   "STYLES": 22
+  },
+  "relationships_by_kind": {
+   "detected": 144,
+   "inferred": 21
+  },
+  "unresolved": 62,
+  "unresolved_by_reason": {
+   "unresolved_target": 2,
+   "external_package": 60
+  },
+  "analysis_errors": [],
+  "skipped_files": {},
+  "analyze_seconds": 0.06,
+  "graph_seconds": 0.001,
+  "unresolved_non_external": [
+   "unresolved_target: flaskr/templates/base.html -REFERENCES-> flaskr/templates/{{ url_for('static', filename='style.css') }}",
+   "unresolved_target: render_template -DATA_FLOW-> get_post"
+  ],
+  "python": {
+   "census_definitions": 45,
+   "extracted": 45,
+   "definition_recall": 1.0,
+   "missing_examples": [],
+   "unparsable_files": 0,
+   "census_routes": 12,
+   "routes_found": 12,
+   "route_recall": 1.0,
+   "routes_missed": [],
+   "routes_extra": []
+  },
+  "html": {
+   "census_ids": 8,
+   "elements_with_id": 8,
+   "id_recall": 1.0
+  },
+  "graph": {
+   "entry_points": 12,
+   "nodes": 141
+  },
+  "peak_python_heap_mb": 1.1
+ },
+ {
+  "id": "fastapi-backend",
+  "kind": "FastAPI + SQLModel backend",
+  "files": 57,
+  "source_files_by_language": {
+   "python": 40,
+   "html": 3
+  },
+  "entities": 232,
+  "relationships": 460,
+  "relationships_by_type": {
+   "IMPORTS": 71,
+   "CONTAINS": 152,
+   "USES": 13,
+   "RETURNS": 23,
+   "CALLS": 152,
+   "DATA_FLOW": 20,
+   "INHERITS": 6,
+   "HANDLES": 23
+  },
+  "relationships_by_kind": {
+   "detected": 293,
+   "inferred": 167
+  },
+  "unresolved": 492,
+  "unresolved_by_reason": {
+   "external_package": 411,
+   "unresolved_target": 81
+  },
+  "analysis_errors": [
+   "app/api/deps.py: syntax error at line 36: multiple exception types must be parenthesized"
+  ],
+  "skipped_files": {},
+  "analyze_seconds": 1.55,
+  "graph_seconds": 0.003,
+  "unresolved_non_external": [
+   "unresolved_target: update_user -CALLS-> UserUpdate.model_dump",
+   "unresolved_target: update_user -CALLS-> User.sqlmodel_update",
+   "unresolved_target: User.sqlmodel_update -DATA_FLOW-> UserUpdate.model_dump",
+   "unresolved_target: Session.add -DATA_FLOW-> get_user_by_email",
+   "unresolved_target: Session.refresh -DATA_FLOW-> get_user_by_email",
+   "unresolved_target: read_items -USES-> SessionDep",
+   "unresolved_target: read_items -USES-> CurrentUser",
+   "unresolved_target: read_items -CALLS-> SessionDep.exec",
+   "unresolved_target: read_item -USES-> SessionDep",
+   "unresolved_target: read_item -USES-> CurrentUser",
+   "unresolved_target: read_item -CALLS-> SessionDep.get",
+   "unresolved_target: create_item -USES-> SessionDep",
+   "unresolved_target: create_item -USES-> CurrentUser",
+   "unresolved_target: create_item -CALLS-> SessionDep.add",
+   "unresolved_target: create_item -CALLS-> SessionDep.commit"
+  ],
+  "python": {
+   "census_definitions": 152,
+   "extracted": 152,
+   "definition_recall": 1.0,
+   "missing_examples": [],
+   "unparsable_files": 1,
+   "census_routes": 21,
+   "routes_found": 21,
+   "route_recall": 1.0,
+   "routes_missed": [],
+   "routes_extra": []
+  },
+  "html": {
+   "census_ids": 3,
+   "elements_with_id": 0,
+   "id_recall": 0.0
+  },
+  "graph": {
+   "entry_points": 21,
+   "nodes": 232
+  },
+  "peak_python_heap_mb": 4.1
+ },
+ {
+  "id": "fastapi-fullstack",
+  "kind": "FastAPI backend + React/TypeScript frontend (TypeScript is NOT supported)",
+  "files": 234,
+  "source_files_by_language": {
+   "python": 43,
+   "html": 4,
+   "css": 1
+  },
+  "entities": 422,
+  "relationships": 487,
+  "relationships_by_type": {
+   "REFERENCES": 1,
+   "IMPORTS": 71,
+   "CONTAINS": 164,
+   "USES": 13,
+   "RETURNS": 23,
+   "CALLS": 162,
+   "DATA_FLOW": 24,
+   "INHERITS": 6,
+   "HANDLES": 23
+  },
+  "relationships_by_kind": {
+   "detected": 316,
+   "inferred": 171
+  },
+  "unresolved": 526,
+  "unresolved_by_reason": {
+   "unresolved_target": 7,
+   "external_package": 519
+  },
+  "analysis_errors": [
+   "backend/app/api/deps.py: syntax error at line 36: multiple exception types must be parenthesized"
+  ],
+  "skipped_files": {
+   "ignored_directory": 2,
+   "sensitive_file": 2,
+   "binary_file": 14
+  },
+  "analyze_seconds": 1.99,
+  "graph_seconds": 0.007,
+  "unresolved_non_external": [
+   "unresolved_target: frontend/index.html -REFERENCES-> vite.svg",
+   "unresolved_target: frontend/index.html -REFERENCES-> assets/images/favicon.png",
+   "unresolved_target: Session.add -DATA_FLOW-> get_user_by_email",
+   "unresolved_target: Session.refresh -DATA_FLOW-> get_user_by_email",
+   "unresolved_target: Path.write_text -DATA_FLOW-> update_release_notes",
+   "unresolved_target: echo -DATA_FLOW-> get_current_version",
+   "unresolved_target: echo -DATA_FLOW-> get_release_notes_body"
+  ],
+  "python": {
+   "census_definitions": 162,
+   "extracted": 162,
+   "definition_recall": 1.0,
+   "missing_examples": [],
+   "unparsable_files": 1,
+   "census_routes": 21,
+   "routes_found": 21,
+   "route_recall": 1.0,
+   "routes_missed": [],
+   "routes_extra": []
+  },
+  "html": {
+   "census_ids": 4,
+   "elements_with_id": 1,
+   "id_recall": 0.25
+  },
+  "graph": {
+   "entry_points": 21,
+   "nodes": 422
+  },
+  "peak_python_heap_mb": 4.6
+ },
+ {
+  "id": "vanilla-web-projects",
+  "kind": "21 vanilla JS/HTML/CSS mini-apps",
+  "files": 85,
+  "source_files_by_language": {
+   "html": 21,
+   "javascript": 21,
+   "css": 21
+  },
+  "entities": 827,
+  "relationships": 1375,
+  "relationships_by_type": {
+   "REFERENCES": 156,
+   "CONTAINS": 694,
+   "CALLS": 98,
+   "TRIGGERS": 55,
+   "STYLES": 372
+  },
+  "relationships_by_kind": {
+   "detected": 1268,
+   "heuristic": 3,
+   "inferred": 104
+  },
+  "unresolved": 22,
+  "unresolved_by_reason": {
+   "unresolved_target": 13,
+   "no_matching_endpoint": 9
+  },
+  "analysis_errors": [],
+  "skipped_files": {
+   "ignored_directory": 1,
+   "binary_file": 49
+  },
+  "analyze_seconds": 3.28,
+  "graph_seconds": 0.018,
+  "unresolved_non_external": [
+   "unresolved_target: product-filtering/index.html -REFERENCES-> script.js",
+   "no_matching_endpoint: getRandomUser -REQUESTS-> https://randomuser.me/api",
+   "no_matching_endpoint: calculate -REQUESTS-> https://open.exchangerate-api.com/v6/latest",
+   "unresolved_target: showError -REFERENCES-> small",
+   "no_matching_endpoint: getPosts -REQUESTS-> https://jsonplaceholder.typicode.com/posts?_limit={limit}&_page={page}",
+   "unresolved_target: filterPosts -REFERENCES-> .post-title",
+   "unresolved_target: filterPosts -REFERENCES-> .post-body",
+   "no_matching_endpoint: searchSongs -REQUESTS-> {api_u_r_l}/suggest/{term}",
+   "no_matching_endpoint: getMoreSongs -REQUESTS-> https://cors-anywhere.herokuapp.com/{url}",
+   "no_matching_endpoint: getLyrics -REQUESTS-> {api_u_r_l}/v1/{artist}/{song_title}",
+   "no_matching_endpoint: searchMeal -REQUESTS-> https://www.themealdb.com/api/json/v1/1/search.php?s={term}",
+   "no_matching_endpoint: getMealById -REQUESTS-> https://www.themealdb.com/api/json/v1/1/lookup.php?i={meal_i_d}",
+   "no_matching_endpoint: getRandomMeal -REQUESTS-> https://www.themealdb.com/api/json/v1/1/random.php",
+   "unresolved_target: music-player/script.js -REFERENCES-> #currTime",
+   "unresolved_target: music-player/script.js -REFERENCES-> #durTime"
+  ],
+  "javascript": {
+   "census_definitions": 103,
+   "extracted": 100,
+   "definition_recall": 0.9709,
+   "missing_examples": [
+    "expense-tracker/script.js:based",
+    "music-player/script.js:get_sec",
+    "music-player/script.js:get_sec_d"
+   ],
+   "request_call_sites": 9,
+   "with_literal_url": 9,
+   "request_relationships": 0
+  },
+  "html": {
+   "census_ids": 120,
+   "elements_with_id": 120,
+   "id_recall": 1.0
+  },
+  "graph": {
+   "entry_points": 51,
+   "nodes": 827
+  },
+  "peak_python_heap_mb": 5.5
+ }
+]

@@ -123,7 +123,8 @@ class AnalysisService:
 
         # Resolution pass: connect candidate links across files/languages; whatever cannot be
         # connected is reported (with a reason) instead of silently dropped.
-        resolved, unresolved = RelationshipResolver(all_entities, root_name=inventory.name).resolve(list(all_relationships.values()))
+        resolver = RelationshipResolver(all_entities, root_name=inventory.name)
+        resolved, unresolved = resolver.resolve(list(all_relationships.values()))
         all_relationships = {r.key: r for r in resolved}
         external: dict[str, int] = {}
         for u in unresolved:
@@ -144,6 +145,8 @@ class AnalysisService:
                 "unresolved_references": dict(sorted(external.items())),
                 "analysis_errors": errors + self._read_errors,
                 "skipped_files": inventory.skipped,
+                # DATA_FLOW / READS_STATE / RETURNS links whose far end could not be resolved (a library call...)
+                "dropped_unresolved_enrichment_links": resolver.dropped_enrichment,
             },
         )
         log.info(

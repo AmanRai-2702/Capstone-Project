@@ -1,5 +1,6 @@
 import logging
 import posixpath
+import re
 from pathlib import PurePosixPath
 
 import tree_sitter
@@ -219,6 +220,17 @@ class HTMLAnalyzer(BaseAnalyzer):
                 sibling_counters.pop()
 
         walk(tree.root_node)
+
+        # Jinja / Django templates: {% extends "base.html" %} / {% include "nav.html" %}. The page's DOM is the union of
+        # the templates it extends, so a script in the child can refer to elements the parent declares. The target is
+        # a template NAME (relative to the templates folder), which the resolver matches to a file.
+        for m in re.finditer(r"""\{%-?\s*(extends|include)\s+["']([^"']+\.html?)["']""", content):
+            result.add_relationship(Relationship(
+                source_id=file_id, target_id=make_file_id(m.group(2)), type=RelationType.REFERENCES,
+                kind=RelationKind.DETECTED, confidence=1.0, metadata={"template": m.group(1)},
+                evidence=[Evidence(snippet=m.group(0), location=SourceLocation(
+                    file_path=rel_path, start_line=content[:m.start()].count("\n") + 1,
+                    end_line=content[:m.start()].count("\n") + 1))]))
 
         # Sibling counts are only known once the parents are closed: finalise the descriptors now.
         def finish(d: dict) -> dict:

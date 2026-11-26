@@ -1,0 +1,478 @@
+[
+ {
+  "id": "microblog",
+  "kind": "Flask app + Jinja templates",
+  "files": 72,
+  "source_files_by_language": {
+   "python": 34,
+   "html": 18
+  },
+  "entities": 326,
+  "relationships": 385,
+  "relationships_by_type": {
+   "CONTAINS": 197,
+   "REFERENCES": 17,
+   "IMPORTS": 52,
+   "INHERITS": 3,
+   "CALLS": 66,
+   "DATA_FLOW": 8,
+   "READS_STATE": 4,
+   "RETURNS": 2,
+   "HANDLES": 35,
+   "REQUESTS": 1
+  },
+  "relationships_by_kind": {
+   "detected": 306,
+   "inferred": 79
+  },
+  "unresolved": 322,
+  "unresolved_by_reason": {
+   "external_package": 322
+  },
+  "analysis_errors": [],
+  "skipped_files": {
+   "ignored_directory": 1,
+   "binary_file": 1
+  },
+  "analyze_seconds": 0.46,
+  "graph_seconds": 0.01,
+  "unresolved_non_external": [],
+  "python": {
+   "census_definitions": 135,
+   "extracted": 135,
+   "definition_recall": 1.0,
+   "missing_examples": [],
+   "unparsable_files": 0,
+   "census_routes": 35,
+   "routes_found": 35,
+   "route_recall": 1.0,
+   "routes_missed": [],
+   "routes_extra": []
+  },
+  "html": {
+   "census_ids": 2,
+   "elements_with_id": 6,
+   "id_recall": 1.0
+  },
+  "graph": {
+   "entry_points": 34,
+   "nodes": 326
+  },
+  "peak_python_heap_mb": 5.9
+ },
+ {
+  "id": "flask-lib",
+  "kind": "large Python library with tests and examples",
+  "files": 227,
+  "source_files_by_language": {
+   "python": 83,
+   "html": 20,
+   "css": 2
+  },
+  "entities": 1825,
+  "relationships": 2728,
+  "relationships_by_type": {
+   "CONTAINS": 1423,
+   "REFERENCES": 15,
+   "IMPORTS": 217,
+   "RETURNS": 65,
+   "CALLS": 546,
+   "DATA_FLOW": 28,
+   "HANDLES": 220,
+   "USES": 84,
+   "READS_STATE": 61,
+   "INHERITS": 36,
+   "STYLES": 33
+  },
+  "relationships_by_kind": {
+   "detected": 2227,
+   "inferred": 493,
+   "heuristic": 8
+  },
+  "unresolved": 708,
+  "unresolved_by_reason": {
+   "dynamic_reference": 1,
+   "external_package": 621,
+   "unresolved_target": 85,
+   "no_matching_endpoint": 1
+  },
+  "analysis_errors": [],
+  "skipped_files": {
+   "ignored_directory": 1,
+   "binary_file": 8,
+   "sensitive_file": 1
+  },
+  "analyze_seconds": 2.18,
+  "graph_seconds": 0.23,
+  "unresolved_non_external": [
+   "dynamic_reference: examples/tutorial/flaskr/templates/base.html -REFERENCES-> examples/tutorial/flaskr/templates/{{ url_for('static', filename='style.css') }}",
+   "unresolved_target: Flask.create_jinja_environment -CALLS-> App.jinja_environment",
+   "unresolved_target: Flask.make_default_options_response -CALLS-> App.response_class",
+   "unresolved_target: Flask.make_response -CALLS-> App.response_class",
+   "unresolved_target: Flask.test_request_context -CALLS-> EnvironBuilder.get_environ",
+   "unresolved_target: Flask.test_request_context -CALLS-> EnvironBuilder.close",
+   "unresolved_target: Flask.wsgi_app -CALLS-> App.should_ignore_error",
+   "unresolved_target: main -CALLS-> FlaskGroup.main",
+   "unresolved_target: AppContext.__init__ -CALLS-> Flask.app_ctx_globals_class",
+   "unresolved_target: newcls.__getitem__ -CALLS-> DebugFilesKeyError.with_traceback",
+   "unresolved_target: FlaskClient.session_transaction -CALLS-> Flask.response_class",
+   "unresolved_target: FlaskClient._request_from_builder_args -CALLS-> EnvironBuilder.get_request",
+   "unresolved_target: FlaskClient._request_from_builder_args -CALLS-> EnvironBuilder.close",
+   "unresolved_target: JSONProvider.response -CALLS-> App.response_class",
+   "unresolved_target: DefaultJSONProvider.response -CALLS-> App.response_class"
+  ],
+  "python": {
+   "census_definitions": 1298,
+   "extracted": 1298,
+   "definition_recall": 1.0,
+   "missing_examples": [],
+   "unparsable_files": 0,
+   "census_routes": 141,
+   "routes_found": 141,
+   "route_recall": 1.0,
+   "routes_missed": [],
+   "routes_extra": []
+  },
+  "html": {
+   "census_ids": 10,
+   "elements_with_id": 16,
+   "id_recall": 1.0
+  },
+  "graph": {
+   "entry_points": 141,
+   "nodes": 1825
+  },
+  "peak_python_heap_mb": 32.5
+ },
+ {
+  "id": "flask-javascript-example",
+  "kind": "Flask + vanilla JS fetch",
+  "files": 12,
+  "source_files_by_language": {
+   "python": 4,
+   "html": 4
+  },
+  "entities": 44,
+  "relationships": 33,
+  "relationships_by_type": {
+   "CONTAINS": 20,
+   "REFERENCES": 7,
+   "IMPORTS": 3,
+   "HANDLES": 3
+  },
+  "relationships_by_kind": {
+   "detected": 30,
+   "inferred": 3
+  },
+  "unresolved": 7,
+  "unresolved_by_reason": {
+   "external_package": 7
+  },
+  "analysis_errors": [],
+  "skipped_files": {},
+  "analyze_seconds": 0.04,
+  "graph_seconds": 0.001,
+  "unresolved_non_external": [],
+  "python": {
+   "census_definitions": 7,
+   "extracted": 7,
+   "definition_recall": 1.0,
+   "missing_examples": [],
+   "unparsable_files": 0,
+   "census_routes": 3,
+   "routes_found": 3,
+   "route_recall": 1.0,
+   "routes_missed": [],
+   "routes_extra": []
+  },
+  "html": {
+   "census_ids": 2,
+   "elements_with_id": 2,
+   "id_recall": 1.0
+  },
+  "graph": {
+   "entry_points": 3,
+   "nodes": 44
+  },
+  "peak_python_heap_mb": 0.4
+ },
+ {
+  "id": "flask-tutorial",
+  "kind": "Flask app (flaskr) + templates",
+  "files": 22,
+  "source_files_by_language": {
+   "python": 9,
+   "css": 1,
+   "html": 6
+  },
+  "entities": 141,
+  "relationships": 170,
+  "relationships_by_type": {
+   "CONTAINS": 95,
+   "REFERENCES": 5,
+   "HANDLES": 12,
+   "IMPORTS": 10,
+   "CALLS": 23,
+   "RETURNS": 1,
+   "READS_STATE": 2,
+   "STYLES": 22
+  },
+  "relationships_by_kind": {
+   "detected": 144,
+   "inferred": 26
+  },
+  "unresolved": 58,
+  "unresolved_by_reason": {
+   "dynamic_reference": 1,
+   "external_package": 57
+  },
+  "analysis_errors": [],
+  "skipped_files": {},
+  "analyze_seconds": 0.11,
+  "graph_seconds": 0.003,
+  "unresolved_non_external": [
+   "dynamic_reference: flaskr/templates/base.html -REFERENCES-> flaskr/templates/{{ url_for('static', filename='style.css') }}"
+  ],
+  "python": {
+   "census_definitions": 45,
+   "extracted": 45,
+   "definition_recall": 1.0,
+   "missing_examples": [],
+   "unparsable_files": 0,
+   "census_routes": 12,
+   "routes_found": 12,
+   "route_recall": 1.0,
+   "routes_missed": [],
+   "routes_extra": []
+  },
+  "html": {
+   "census_ids": 8,
+   "elements_with_id": 8,
+   "id_recall": 1.0
+  },
+  "graph": {
+   "entry_points": 12,
+   "nodes": 141
+  },
+  "peak_python_heap_mb": 1.7
+ },
+ {
+  "id": "fastapi-backend",
+  "kind": "FastAPI + SQLModel backend",
+  "files": 57,
+  "source_files_by_language": {
+   "python": 40,
+   "html": 3
+  },
+  "entities": 232,
+  "relationships": 460,
+  "relationships_by_type": {
+   "IMPORTS": 71,
+   "CONTAINS": 152,
+   "USES": 13,
+   "RETURNS": 23,
+   "CALLS": 152,
+   "DATA_FLOW": 20,
+   "INHERITS": 6,
+   "HANDLES": 23
+  },
+  "relationships_by_kind": {
+   "detected": 293,
+   "inferred": 167
+  },
+  "unresolved": 415,
+  "unresolved_by_reason": {
+   "external_package": 386,
+   "unresolved_target": 29
+  },
+  "analysis_errors": [
+   "app/api/deps.py: syntax error at line 36: multiple exception types must be parenthesized"
+  ],
+  "skipped_files": {},
+  "analyze_seconds": 0.54,
+  "graph_seconds": 0.012,
+  "unresolved_non_external": [
+   "unresolved_target: read_items -CALLS-> SessionDep.exec",
+   "unresolved_target: read_item -CALLS-> SessionDep.get",
+   "unresolved_target: create_item -CALLS-> SessionDep.add",
+   "unresolved_target: create_item -CALLS-> SessionDep.commit",
+   "unresolved_target: create_item -CALLS-> SessionDep.refresh",
+   "unresolved_target: update_item -CALLS-> SessionDep.get",
+   "unresolved_target: update_item -CALLS-> SessionDep.add",
+   "unresolved_target: update_item -CALLS-> SessionDep.commit",
+   "unresolved_target: update_item -CALLS-> SessionDep.refresh",
+   "unresolved_target: delete_item -CALLS-> SessionDep.get",
+   "unresolved_target: delete_item -CALLS-> SessionDep.delete",
+   "unresolved_target: delete_item -CALLS-> SessionDep.commit",
+   "unresolved_target: create_user -CALLS-> SessionDep.add",
+   "unresolved_target: create_user -CALLS-> SessionDep.commit",
+   "unresolved_target: read_users -CALLS-> SessionDep.exec"
+  ],
+  "python": {
+   "census_definitions": 152,
+   "extracted": 152,
+   "definition_recall": 1.0,
+   "missing_examples": [],
+   "unparsable_files": 1,
+   "census_routes": 21,
+   "routes_found": 21,
+   "route_recall": 1.0,
+   "routes_missed": [],
+   "routes_extra": []
+  },
+  "html": {
+   "census_ids": 0,
+   "elements_with_id": 0,
+   "id_recall": 1.0
+  },
+  "graph": {
+   "entry_points": 21,
+   "nodes": 232
+  },
+  "peak_python_heap_mb": 6.6
+ },
+ {
+  "id": "fastapi-fullstack",
+  "kind": "FastAPI backend + React/TypeScript frontend (TypeScript is NOT supported)",
+  "files": 234,
+  "source_files_by_language": {
+   "python": 43,
+   "html": 4,
+   "css": 1
+  },
+  "entities": 422,
+  "relationships": 487,
+  "relationships_by_type": {
+   "REFERENCES": 1,
+   "IMPORTS": 71,
+   "CONTAINS": 164,
+   "USES": 13,
+   "RETURNS": 23,
+   "CALLS": 162,
+   "DATA_FLOW": 24,
+   "INHERITS": 6,
+   "HANDLES": 23
+  },
+  "relationships_by_kind": {
+   "detected": 316,
+   "inferred": 171
+  },
+  "unresolved": 475,
+  "unresolved_by_reason": {
+   "asset_not_analysed": 2,
+   "external_package": 473
+  },
+  "analysis_errors": [
+   "backend/app/api/deps.py: syntax error at line 36: multiple exception types must be parenthesized"
+  ],
+  "skipped_files": {
+   "ignored_directory": 2,
+   "sensitive_file": 2,
+   "binary_file": 14
+  },
+  "analyze_seconds": 0.53,
+  "graph_seconds": 0.006,
+  "unresolved_non_external": [
+   "asset_not_analysed: frontend/index.html -REFERENCES-> vite.svg",
+   "asset_not_analysed: frontend/index.html -REFERENCES-> assets/images/favicon.png"
+  ],
+  "python": {
+   "census_definitions": 162,
+   "extracted": 162,
+   "definition_recall": 1.0,
+   "missing_examples": [],
+   "unparsable_files": 1,
+   "census_routes": 21,
+   "routes_found": 21,
+   "route_recall": 1.0,
+   "routes_missed": [],
+   "routes_extra": []
+  },
+  "html": {
+   "census_ids": 1,
+   "elements_with_id": 1,
+   "id_recall": 1.0
+  },
+  "graph": {
+   "entry_points": 21,
+   "nodes": 422
+  },
+  "peak_python_heap_mb": 7.8
+ },
+ {
+  "id": "vanilla-web-projects",
+  "kind": "21 vanilla JS/HTML/CSS mini-apps",
+  "files": 85,
+  "source_files_by_language": {
+   "html": 21,
+   "javascript": 21,
+   "css": 21
+  },
+  "entities": 829,
+  "relationships": 1386,
+  "relationships_by_type": {
+   "REFERENCES": 163,
+   "CONTAINS": 696,
+   "CALLS": 100,
+   "TRIGGERS": 55,
+   "STYLES": 372
+  },
+  "relationships_by_kind": {
+   "detected": 1272,
+   "inferred": 105,
+   "heuristic": 9
+  },
+  "unresolved": 19,
+  "unresolved_by_reason": {
+   "external_api": 7,
+   "dom_selector_unmatched": 9,
+   "no_matching_endpoint": 2,
+   "unresolved_target": 1
+  },
+  "analysis_errors": [],
+  "skipped_files": {
+   "ignored_directory": 1,
+   "binary_file": 49
+  },
+  "analyze_seconds": 0.79,
+  "graph_seconds": 0.019,
+  "unresolved_non_external": [
+   "external_api: getRandomUser -REQUESTS-> https://randomuser.me/api",
+   "external_api: calculate -REQUESTS-> https://open.exchangerate-api.com/v6/latest",
+   "dom_selector_unmatched: showError -REFERENCES-> small",
+   "external_api: getPosts -REQUESTS-> https://jsonplaceholder.typicode.com/posts?_limit={limit}&_page={page}",
+   "dom_selector_unmatched: filterPosts -REFERENCES-> .post-title",
+   "dom_selector_unmatched: filterPosts -REFERENCES-> .post-body",
+   "no_matching_endpoint: searchSongs -REQUESTS-> {api_u_r_l}/suggest/{term}",
+   "external_api: getMoreSongs -REQUESTS-> https://cors-anywhere.herokuapp.com/{url}",
+   "no_matching_endpoint: getLyrics -REQUESTS-> {api_u_r_l}/v1/{artist}/{song_title}",
+   "external_api: searchMeal -REQUESTS-> https://www.themealdb.com/api/json/v1/1/search.php?s={term}",
+   "external_api: getMealById -REQUESTS-> https://www.themealdb.com/api/json/v1/1/lookup.php?i={meal_i_d}",
+   "external_api: getRandomMeal -REQUESTS-> https://www.themealdb.com/api/json/v1/1/random.php",
+   "dom_selector_unmatched: music-player/script.js -REFERENCES-> #currTime",
+   "dom_selector_unmatched: music-player/script.js -REFERENCES-> #durTime",
+   "unresolved_target: .status -TRIGGERS-> addToCart"
+  ],
+  "javascript": {
+   "census_definitions": 103,
+   "extracted": 102,
+   "definition_recall": 0.9903,
+   "missing_examples": [
+    "expense-tracker/script.js:based"
+   ],
+   "request_call_sites": 9,
+   "with_literal_url": 9,
+   "request_relationships": 0
+  },
+  "html": {
+   "census_ids": 120,
+   "elements_with_id": 120,
+   "id_recall": 1.0
+  },
+  "graph": {
+   "entry_points": 51,
+   "nodes": 829
+  },
+  "peak_python_heap_mb": 5.3
+ }
+]
