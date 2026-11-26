@@ -7,9 +7,9 @@ BTech final-year capstone. Windows 11, Python 3.13, PowerShell or cmd. Needs Pyt
 
 | Check | Result |
 |---|---|
-| Automated tests | **181 pass** (`python -m pytest -c backend/pytest.ini backend/tests`) |
-| Benchmark `login_app` (FastAPI + vanilla JS) | 39/39 entities, 60/60 relationships; 0 missing, 0 dangling, 0 forbidden edges |
-| Benchmark `notes_app` (Flask + multi-page + ES modules), built *after* the analyzers | 52/52 entities, 83/83 relationships. It first scored **84.3% recall** and exposed 6 real bugs (section 5) |
+| Automated tests | **463 pass, 2 skipped (opt-in)** (`python -m pytest -c backend/pytest.ini backend/tests`) |
+| Benchmark `login_app` (FastAPI + vanilla JS) | 40/40 entities, 63/63 relationships (after the Phase 6 READS_STATE edges were added to the truth); 0 missing, 0 dangling, 0 forbidden edges |
+| Benchmark `notes_app` (Flask + multi-page + ES modules), built *after* the analyzers | 52/52 entities, 92/92 relationships (truth extended in Phase 6). It first scored **84.3% recall** and exposed 6 real bugs (section 5) |
 | Browser end-to-end checks (headless Edge): `backend/e2e/ui_check.py` (original journeys) and `backend/e2e/ui_phase7.py` (Phase 7 features) | 20/20 and 42/42 journeys pass, no console errors |
 | Dogfooding: RepoMind analysing its own source | works; its own UI is connected to its own API routes |
 
