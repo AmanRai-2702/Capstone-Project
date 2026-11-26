@@ -41,10 +41,29 @@ IMPACT_RE = re.compile(
 INCOMING_RE = re.compile(r"\b(who calls|what calls|called by|callers?|who uses|used by|dependents?|"
                          r"what (uses|depends on)|who (references|triggers|requests))\b", re.I)
 OUTGOING_RE = re.compile(r"\b(what does .+ (call|use|depend on)|callees?|dependencies|depends on)\b", re.I)
+_REPO = r"(repo|repository|project|app|application|codebase|code base|system|software)"
+OVERVIEW_RE = re.compile(
+    rf"\b(purpose|what (is|does) (this|the|my) {_REPO}( do| for| about)?|what is (this|the) {_REPO}|"
+    rf"what (is|does) it (do|for)|about (this|the) {_REPO}|summari[sz]e (this|the|my)? ?{_REPO}|"
+    rf"(repo|repository|project|codebase) summary|overview|general idea|in a nutshell|"
+    rf"goal of (this|the) {_REPO}|why (does|was) (this|the) {_REPO})\b", re.I)
+TECH_RE = re.compile(
+    r"\b((programming )?languages?|tech(nology)?[- ]?(stack|stacks)?|technologies|frameworks?|libraries|"
+    r"built (with|using)|written in|tools? (used|does)|stack|"
+    rf"(packages|dependencies|requirements) (does|do|is|are|used by) (this|the|it)|what .{{0,20}}\b(use|uses|used)\b.{{0,15}}\b(framework|librar\w+|package|database)\w*)\b", re.I)
+COMPONENTS_RE = re.compile(
+    r"\b(main|major|key|core|primary|important) (components?|modules?|parts?|files?|packages?|directories|folders)|"
+    r"(components?|modules?|parts) (of|in) (this|the) |responsibilit\w+ of|project structure|"
+    r"(directory|folder|file) (structure|layout|tree)|list (the |all )?(files|modules|components)|"
+    r"how is (this|the) .{0,30}(organi[sz]ed|structured)|what files", re.I)
 ARCH_RE = re.compile(
-    r"\b(architecture|overview|high[- ]level|summari[sz]e|structure of|how is .{0,40}(organi[sz]ed|structured)|"
-    r"what does this (repo|repository|project|app|application|codebase)|"
-    r"front[- ]?end and back[- ]?end|communicat\w*)\b", re.I)
+    r"\b(architecture|high[- ]level|structure of|"
+    r"front[- ]?end.{0,40}back[- ]?end|back[- ]?end.{0,40}front[- ]?end|client.{0,20}server|"
+    r"how (do|does) (the )?(ui|front[- ]?end|client|page|pages).{0,30}(talk|communicat\w*|connect\w*|call|reach)|"
+    r"communicat\w*)\b", re.I)
+DOCS_RE = re.compile(r"\b(readme|documentation|docs|installation|install(ing)?|setup|set up|getting started|"
+                     r"how (do i|to) (run|start|use|install|deploy))\b", re.I)
+REPO_INTENTS = ("overview", "architecture", "tech", "components", "docs")
 LOCATE_RE = re.compile(r"\b(where is|where are|where's|which files?|find the|locate|implemented|"
                        r"implementation of|defined)\b", re.I)
 VECTOR_MIN_SCORE = 0.12   # cosine similarity below this is treated as "no semantic match"
@@ -81,11 +100,16 @@ class Retriever:
     # ------------------------------------------------------------------ public
     def retrieve(self, question: str) -> Context:
         intent = self.classify(question)
-        if intent == "architecture":                  # needs no entity match: summarises the whole graph
-            return self._architecture(question)
+        if intent in REPO_INTENTS:                    # needs no entity match: summarises the whole repository
+            ctx = self._repo_level(question, intent)
+            if not ctx.empty:
+                return ctx
+            intent = "explain"
         seeds, vector_only = self._link(question)
         if not seeds:
-            return Context(question=question, intent="none")
+            # A vague question names no entity. Before refusing, look for supporting documentation.
+            docs = self._docs(question, intent="docs", readme_fallback=False)
+            return docs if not docs.empty else Context(question=question, intent="none")
         builders = {"impact": self._impact, "relations": self._relations, "locate": self._locate,
                     "flow": self._flow, "explain": self._explain}
         if intent in ("impact", "relations") and seeds[0][1].id in vector_only:
@@ -100,10 +124,18 @@ class Retriever:
     def classify(self, question: str) -> str:
         if IMPACT_RE.search(question):
             return "impact"
-        if INCOMING_RE.search(question) or OUTGOING_RE.search(question):
-            return "relations"
+        if OVERVIEW_RE.search(question):
+            return "overview"
+        if COMPONENTS_RE.search(question):
+            return "components"
+        if TECH_RE.search(question):
+            return "tech"
         if ARCH_RE.search(question):
             return "architecture"
+        if INCOMING_RE.search(question) or OUTGOING_RE.search(question):
+            return "relations"
+        if DOCS_RE.search(question):
+            return "docs"
         if LOCATE_RE.search(question):
             return "locate"
         if FLOW_RE.search(question):
@@ -340,17 +372,145 @@ class Retriever:
         return Context(question=question, intent="locate", entity_ids=ids,
                        headline="Most relevant code:", facts=facts)
 
-    def _architecture(self, question: str) -> Context:
-        """Whole-repository overview built only from graph statistics and structure."""
+    # ------------------------------------------------------------------ repository-level questions
+    def _repo_level(self, question: str, intent: str) -> Context:
+        """Whole-repository questions need no entity name. Sections are ordered by what was asked,
+        and every fact is read from the graph, the docs or a manifest file (never generated)."""
+        if intent == "docs":
+            return self._docs(question, intent="docs")
+        a = self.analysis
+        sections = {
+            "overview": ("readme", "languages", "tech", "components", "endpoints"),
+            "architecture": ("languages", "components", "endpoints", "flows", "hubs", "gaps", "readme"),
+            "tech": ("languages", "tech", "external"),
+            "components": ("components", "endpoints", "hubs"),
+        }[intent]
+        builders = {"readme": self._readme_facts, "languages": self._language_facts, "tech": self._tech_facts,
+                    "components": self._component_facts, "endpoints": self._endpoint_facts,
+                    "flows": self._entry_flow_facts, "hubs": self._hub_facts, "gaps": self._gap_facts,
+                    "external": self._external_facts}
+        facts: list[Fact] = []
+        for name in sections:
+            facts += builders[name]()
+        ids = [e.id for e in self.analysis.entities if e.type.value == "api_endpoint"]
+        heads = {"overview": f"Overview of `{a.name}`:", "architecture": f"Architecture overview of `{a.name}`:",
+                 "tech": f"Technologies used in `{a.name}`:", "components": f"Main components of `{a.name}`:"}
+        return Context(question=question, intent=intent, entity_ids=ids, headline=heads[intent], facts=facts)
+
+    def _architecture(self, question: str) -> Context:      # kept for callers of the old API
+        return self._repo_level(question, "architecture")
+
+    def _doc_files(self) -> list[Entity]:
+        return [e for e in self.analysis.entities if e.type.value == "file"
+                and e.metadata.get("category") == "doc"
+                and e.qualified_name.lower().endswith((".md", ".rst", ".txt", ".adoc"))]
+
+    def _readme_facts(self, max_lines: int = 25) -> list[Fact]:
+        readmes = sorted((e for e in self._doc_files() if e.name.lower().startswith("readme")),
+                         key=lambda e: (e.qualified_name.count("/"), e.qualified_name))
+        if not readmes:
+            return []
+        path = readmes[0].qualified_name
+        lines = self._lines(path)
+        picked = [(n, ln) for n, ln in enumerate(lines, 1)
+                  if ln.strip() and not ln.lstrip().startswith(("![", "[!["))][:max_lines]
+        if not picked:
+            return []
+        start, end = picked[0][0], picked[-1][0]
+        return [Fact(f"The repository documents itself in `{path}` (excerpt)", self._cite(path, start, end),
+                     "\n".join(ln for _, ln in picked), quote=True)]
+
+    def _docs(self, question: str, intent: str = "docs", readme_fallback: bool = True) -> Context:
+        hits = self.index.search(question, k=4, min_score=VECTOR_MIN_SCORE, kind="doc")
+        facts = [Fact(f"Documentation excerpt from `{c.citation.rsplit(':', 1)[0]}`", c.citation,
+                      "\n".join(c.text.splitlines()[1:12]), quote=True) for _, c in hits if c.citation]
+        ids = list(dict.fromkeys(c.entity_id for _, c in hits))
+        if not facts and readme_fallback:
+            facts = self._readme_facts()
+        if not facts:
+            return Context(question=question, intent=intent)
+        return Context(question=question, intent=intent, entity_ids=ids, headline="Relevant documentation:", facts=facts)
+
+    def _language_facts(self) -> list[Fact]:
         a = self.analysis
         files = [e for e in a.entities if e.type.value == "file" and e.metadata.get("category") == "source"]
         by_lang = Counter(e.language.value for e in files)
         code = [e for e in a.entities if e.type.value != "file"]
-        facts = [Fact("Source files: " + ", ".join(f"{n} {lang}" for lang, n in sorted(by_lang.items()))
-                      + f"; {len(code)} code entities and {a.relationship_count} relationships were extracted")]
-        ids: list[str] = []
+        return [Fact("Source files: " + ", ".join(f"{n} {lang}" for lang, n in sorted(by_lang.items()))
+                     + f"; {len(code)} code entities and {a.relationship_count} relationships were extracted")]
 
-        for ep in sorted((e for e in a.entities if e.type.value == "api_endpoint"), key=lambda e: e.id):
+    # Well-known packages -> what they are. Only used to *describe* a package that the repository
+    # itself declares or imports; a package that is not found in the repo is never mentioned.
+    KNOWN_PACKAGES = {
+        "fastapi": "FastAPI web framework", "flask": "Flask web framework", "django": "Django web framework",
+        "pydantic": "Pydantic data validation", "sqlalchemy": "SQLAlchemy ORM", "uvicorn": "Uvicorn ASGI server",
+        "requests": "HTTP client", "httpx": "HTTP client", "numpy": "NumPy", "pandas": "pandas",
+        "react": "React UI library", "vue": "Vue UI framework", "express": "Express web framework",
+        "axios": "Axios HTTP client", "jquery": "jQuery", "pytest": "pytest test framework",
+        "bootstrap": "Bootstrap CSS framework", "tailwindcss": "Tailwind CSS", "jest": "Jest test framework",
+    }
+
+    def _tech_facts(self) -> list[Fact]:
+        facts: list[Fact] = []
+        for e in self.analysis.entities:
+            if e.type.value != "file" or e.metadata.get("category") != "config":
+                continue
+            name = e.name.lower()
+            if name.startswith("requirements") and name.endswith(".txt"):
+                lines = self._lines(e.qualified_name)
+                pkgs = [(n, re.split(r"[<>=!~\[; #]", ln.strip(), maxsplit=1)[0]) for n, ln in enumerate(lines, 1)
+                        if ln.strip() and not ln.lstrip().startswith(("#", "-"))]
+                if pkgs:
+                    facts.append(Fact(f"Python packages declared in `{e.qualified_name}`: {self._describe(p for _, p in pkgs)}",
+                                      self._cite(e.qualified_name, pkgs[0][0], pkgs[-1][0]),
+                                      "\n".join(lines[pkgs[0][0] - 1: pkgs[-1][0]][:12])))
+            elif name == "package.json":
+                try:
+                    import json
+                    data = json.loads("\n".join(self._lines(e.qualified_name)))
+                except (ValueError, TypeError):
+                    continue
+                deps = sorted({*(data.get("dependencies") or {}), *(data.get("devDependencies") or {})})
+                if deps:
+                    n = max(len(self._lines(e.qualified_name)), 1)
+                    facts.append(Fact(f"JavaScript packages declared in `{e.qualified_name}`: {self._describe(deps)}",
+                                      self._cite(e.qualified_name, 1, n)))
+        imported = sorted({u.detail.split(".")[0].split("/")[0] for u in self.analysis.unresolved
+                           if u.reason == "external_package" and u.detail})
+        known = [p for p in imported if p.lower() in self.KNOWN_PACKAGES]
+        if known:
+            facts.append(Fact("Frameworks and libraries imported by the code: "
+                              + ", ".join(f"{p} ({self.KNOWN_PACKAGES[p.lower()]})" for p in known)))
+        return facts
+
+    def _describe(self, names) -> str:
+        names = list(dict.fromkeys(names))
+        shown = [f"{n} ({self.KNOWN_PACKAGES[n.lower()]})" if n.lower() in self.KNOWN_PACKAGES else n
+                 for n in names[:15]]
+        return ", ".join(shown) + (f" and {len(names) - 15} more" if len(names) > 15 else "")
+
+    def _component_facts(self, max_groups: int = 8, max_names: int = 5) -> list[Fact]:
+        """One fact per top-level directory: its source files and the main things defined in them."""
+        groups: dict[str, list[Entity]] = {}
+        for e in self.analysis.entities:
+            if e.type.value == "file" and e.metadata.get("category") == "source":
+                top = e.qualified_name.split("/", 1)[0] if "/" in e.qualified_name else "(repository root)"
+                groups.setdefault(top, []).append(e)
+        facts = []
+        for top, files in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:max_groups]:
+            names = []
+            for f in sorted(files, key=lambda x: x.qualified_name):
+                defined = [x for x in self.analysis.entities if x.parent_id == f.id
+                           and x.type.value in ("class", "function", "api_endpoint")]
+                names.append(f"`{f.qualified_name}`"
+                             + (f" ({', '.join(d.name for d in defined[:max_names])})" if defined else ""))
+            facts.append(Fact(f"`{top}` holds {len(files)} source file(s): " + "; ".join(names[:6])
+                              + (f"; and {len(names) - 6} more" if len(names) > 6 else "")))
+        return facts
+
+    def _endpoint_facts(self) -> list[Fact]:
+        facts = []
+        for ep in sorted((e for e in self.analysis.entities if e.type.value == "api_endpoint"), key=lambda e: e.id):
             handlers = [x["source"] for x in self.graph.incoming(ep.id, [RelationType.HANDLES])]
             clients = [x["source"] for x in self.graph.incoming(ep.id, [RelationType.REQUESTS])]
             text = f"{self._label(ep.id)}"
@@ -358,9 +518,10 @@ class Retriever:
             text += (" and is called from " + ", ".join(self._label(c) for c in clients)) if clients else " and no client in the repository calls it"
             cite, snip = self._entity_cite(ep)
             facts.append(Fact(text, cite, snip))
-            ids += [ep.id, *handlers, *clients]
+        return facts
 
-        flow = self.graph.flow_view()
+    def _entry_flow_facts(self) -> list[Fact]:
+        flow, facts = self.graph.flow_view(), []
         for entry in self.graph.entry_points():
             reach = nx.descendants(flow, entry)
             sinks = sorted(n for n in reach if flow.out_degree(n) == 0)
@@ -368,23 +529,23 @@ class Retriever:
                 cite, _ = self._entity_cite(self.graph.get_entity(entry))
                 facts.append(Fact(f"Entry point {self._label(entry)} starts a flow reaching {len(reach)} components, "
                                   f"ending in {', '.join(self._label(s) for s in sinks[:3])}", cite))
-                ids.append(entry)
+        return facts
 
+    def _hub_facts(self) -> list[Fact]:
         dep = self.graph.dependency_view()
-        hubs = sorted((e for e in code if e.type.value in ("class", "function", "method")),
-                      key=lambda e: (-dep.in_degree(e.id), e.id))
-        hubs = [e for e in hubs if dep.in_degree(e.id) > 0][:3]
-        for e in hubs:
-            cite, _ = self._entity_cite(e)
-            facts.append(Fact(f"Central component: {self._label(e.id)} has {dep.in_degree(e.id)} direct dependents", cite))
-            ids.append(e.id)
+        code = [e for e in self.analysis.entities if e.type.value in ("class", "function", "method")]
+        hubs = [e for e in sorted(code, key=lambda e: (-dep.in_degree(e.id), e.id)) if dep.in_degree(e.id) > 0][:3]
+        return [Fact(f"Central component: {self._label(e.id)} has {dep.in_degree(e.id)} direct dependents",
+                     self._entity_cite(e)[0]) for e in hubs]
 
-        external = sorted({u.detail for u in a.unresolved if u.reason == "external_package" and u.detail})
-        if external:
-            facts.append(Fact("External packages used (not analysed): " + ", ".join(external)))
-        broken = [u for u in a.unresolved if u.reason in ("no_matching_endpoint", "method_mismatch")]
+    def _external_facts(self) -> list[Fact]:
+        external = sorted({u.detail for u in self.analysis.unresolved if u.reason == "external_package" and u.detail})
+        return [Fact("External packages used (not analysed): " + ", ".join(external))] if external else []
+
+    def _gap_facts(self) -> list[Fact]:
+        facts = self._external_facts()
+        broken = [u for u in self.analysis.unresolved if u.reason in ("no_matching_endpoint", "method_mismatch")]
         if broken:
             facts.append(Fact(f"{len(broken)} frontend request(s) could not be matched to a backend route: "
                               + ", ".join(sorted({u.target_id for u in broken}))))
-        return Context(question=question, intent="architecture", entity_ids=list(dict.fromkeys(ids)),
-                       headline=f"Architecture overview of `{a.name}`:", facts=facts)
+        return facts

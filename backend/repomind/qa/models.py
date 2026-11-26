@@ -11,6 +11,7 @@ class Fact:
     text: str
     citation: str | None = None     # "path:start-end"
     snippet: str = ""               # source lines for the citation (may be empty)
+    quote: bool = False             # offline answers print the snippet too (used for README/doc excerpts)
 
 
 @dataclass
@@ -44,6 +45,8 @@ class Context:
         for i, f in enumerate(self.facts, 1):
             cite = f"  [{f.citation}]" if f.citation else ""
             out.append(f"{i}. {f.text}{cite}")
+            if f.quote and f.snippet:
+                out.extend("      > " + ln for ln in f.snippet.splitlines()[:12])
         return "\n".join(out)
 
 
